@@ -1,0 +1,46 @@
+name: Nightly Full Regression
+
+on:
+  schedule:
+    - cron: '0 22 * * *'   # Every night at 22:00 UTC (05:00 WIB)
+  workflow_dispatch:        # Manual trigger
+
+jobs:
+  full-regression:
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Setup Java 17 (Allure CLI)
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      - name: Run Cypress Tests
+        uses: cypress-io/github-action@v6
+        with:
+          browser: chrome
+        env:
+          CYPRESS_BASE_URL: https://demo.evershop.io
+
+      - name: Install Allure CLI
+        run: npm install -g allure-commandline
+
+      - name: Generate Allure Report
+        if: always()
+        run: allure generate allure-results -o allure-report --clean
+
+      - name: Upload Allure Report
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: nightly-allure-report
+          path: allure-report/
+          retention-days: 30

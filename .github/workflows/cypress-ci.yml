@@ -1,0 +1,129 @@
+name: Cypress E2E Tests — EverShop
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main, develop]
+
+env:
+  CYPRESS_BASE_URL: https://demo.evershop.io
+
+jobs:
+  # ── Job 1: Install & Cache ──────────────────────────────
+  install:
+    name: Install Dependencies
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Setup Java 17 (Allure CLI requirement)
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      - name: Cypress Install (no run)
+        uses: cypress-io/github-action@v6
+        with:
+          runTests: false
+
+      - name: Install Allure CLI
+        run: npm install -g allure-commandline
+
+      - name: Cache build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: node-modules-cache
+          path: node_modules
+          if-no-files-found: error
+
+  # ── Job 2: Run Tests ────────────────────────────────────
+  cypress-run:
+    name: Run Cypress Tests
+    runs-on: ubuntu-24.04
+    needs: install
+    strategy:
+      fail-fast: false
+      matrix:
+        containers: [1, 2, 3]
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Setup Java (Allure requirement)
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      - name: Download cached node_modules
+        uses: actions/download-artifact@v4
+        with:
+          name: node-modules-cache
+          path: node_modules
+
+      - name: Run Cypress Tests
+        uses: cypress-io/github-action@v6
+        with:
+          browser: chrome
+          install: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          CYPRESS_BASE_URL: ${{ env.CYPRESS_BASE_URL }}
+
+      - name: Upload Allure Results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: allure-results-${{ matrix.containers }}
+          path: allure-results/
+
+  # ── Job 3: Generate & Publish Report ───────────────────
+  allure-report:
+    name: Generate Allure Report
+    runs-on: ubuntu-24.04
+    needs: cypress-run
+    if: always()
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      - name: Download all Allure Results
+        uses: actions/download-artifact@v4
+        with:
+          pattern: allure-results-*
+          merge-multiple: true
+          path: allure-results/
+
+      - name: Install Allure CLI
+        run: npm install -g allure-commandline
+
+      - name: Generate Allure Report
+        run: allure generate allure-results -o allure-report --clean
+
+      - name: Upload Allure HTML Report
+        uses: actions/upload-artifact@v4
+        with:
+          name: allure-html-report
+          path: allure-report/
+          retention-days: 30

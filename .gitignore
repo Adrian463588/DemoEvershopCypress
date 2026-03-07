@@ -31,4 +31,3 @@ cypress/reports/
 allure-results/
 allure-report/
 coverage/
-*.json
