@@ -23,19 +23,10 @@ jobs:
         with:
           node-version: 20
 
-      - name: Setup Java 17 (Allure CLI requirement)
-        uses: actions/setup-java@v4
-        with:
-          distribution: 'temurin'
-          java-version: '17'
-
       - name: Cypress Install (no run)
         uses: cypress-io/github-action@v6
         with:
           runTests: false
-
-      - name: Install Allure CLI
-        run: npm install -g allure-commandline
 
       - name: Cache build artifacts
         uses: actions/upload-artifact@v4
@@ -43,6 +34,7 @@ jobs:
           name: node-modules-cache
           path: node_modules
           if-no-files-found: error
+
 
   # ── Job 2: Run Tests ────────────────────────────────────
   cypress-run:
@@ -62,12 +54,6 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 20
-
-      - name: Setup Java (Allure requirement)
-        uses: actions/setup-java@v4
-        with:
-          distribution: 'temurin'
-          java-version: '17'
 
       - name: Download cached node_modules
         uses: actions/download-artifact@v4
@@ -91,39 +77,70 @@ jobs:
           name: allure-results-${{ matrix.containers }}
           path: allure-results/
 
+
   # ── Job 3: Generate & Publish Report ───────────────────
   allure-report:
-    name: Generate Allure Report
+    name: Generate & Publish Allure Report
     runs-on: ubuntu-24.04
     needs: cypress-run
     if: always()
+    permissions:
+      contents: write   # diperlukan untuk push ke branch gh-pages
 
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4
 
-      - name: Setup Java
+      # Ambil history laporan sebelumnya dari branch gh-pages
+      # (untuk menampilkan grafik trend & riwayat run)
+      - name: Get Allure History from gh-pages
+        uses: actions/checkout@v4
+        if: always()
+        continue-on-error: true   # tidak error jika gh-pages belum ada
+        with:
+          ref: gh-pages
+          path: gh-pages
+
+      - name: Setup Java 17 (Allure CLI requirement)
         uses: actions/setup-java@v4
         with:
           distribution: 'temurin'
           java-version: '17'
 
-      - name: Download all Allure Results
+      # Gabungkan semua hasil dari 3 matrix container
+      - name: Download & Merge all Allure Results
         uses: actions/download-artifact@v4
         with:
           pattern: allure-results-*
           merge-multiple: true
           path: allure-results/
 
-      - name: Install Allure CLI
-        run: npm install -g allure-commandline
+      # Generate report + simpan history (maks 20 run terakhir)
+      - name: Generate Allure Report with History
+        uses: simple-elf/allure-report-action@master
+        if: always()
+        id: allure-report
+        with:
+          allure_results: allure-results
+          gh_pages: gh-pages
+          allure_report: allure-report
+          allure_history: allure-history
+          keep_reports: 20
 
-      - name: Generate Allure Report
-        run: allure generate allure-results -o allure-report --clean
-
-      - name: Upload Allure HTML Report
+      # Simpan artifact HTML untuk bisa didownload langsung
+      - name: Upload Allure HTML Report (Artifact)
         uses: actions/upload-artifact@v4
+        if: always()
         with:
           name: allure-html-report
           path: allure-report/
           retention-days: 30
+
+      # Deploy ke GitHub Pages (hanya saat push, bukan PR)
+      - name: Deploy Allure Report to GitHub Pages
+        if: always() && github.event_name == 'push'
+        uses: peaceiris/actions-gh-pages@v4
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_branch: gh-pages
+          publish_dir: allure-history

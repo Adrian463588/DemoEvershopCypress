@@ -7,8 +7,8 @@
     "test": "npx cypress run",
     "allure:clean": "rimraf allure-results allure-report",
     "cy:run": "cypress run --env allure=true",
-    "allure:generate": "allure generate allure-results -o allure-report --clean",
-    "allure:open": "allure open allure-report",
+    "allure:generate": "npx allure-commandline generate allure-results -o allure-report --clean",
+    "allure:open": "npx allure-commandline open allure-report",
     "test:report": "npm run allure:clean && npm run cy:run && npm run allure:generate"
   },
   "keywords": [],
