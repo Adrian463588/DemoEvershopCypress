@@ -17,7 +17,8 @@ pipeline {
         timeout(time: 30, unit: 'MINUTES')
         disableConcurrentBuilds()
         timestamps()
-        ansiColor('xterm')   
+        ansiColor('xterm')
+        quietPeriod(600)   // Jeda 10 menit setelah push, agar GitHub Actions selesai duluan
     }
 
     triggers {
