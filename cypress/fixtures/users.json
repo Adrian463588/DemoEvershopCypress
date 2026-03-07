@@ -1,12 +1,12 @@
 {
   "validUser": {
-    "email": "test@evershop.io",
-    "password": "Test123!@#",
-    "firstName": "John",
-    "lastName": "Doe"
+    "email": "newuser@gmail.com",
+    "password": "ValidPass123",
+    "firstName": "Andrew",
+    "lastName": "Martin"
   },
   "invalidUser": {
-    "email": "invalid@email",
+    "email": "invalid@email.com",
     "password": "123"
   }
 }

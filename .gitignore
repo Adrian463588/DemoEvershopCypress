@@ -26,3 +26,9 @@ cypress/reports/
 
 # Mac OS
 .DS_Store
+
+# Test Reporters & Output
+allure-results/
+allure-report/
+coverage/
+*.json

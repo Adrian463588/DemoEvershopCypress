@@ -1,6 +1,7 @@
 const { defineConfig } = require("cypress");
 
 module.exports = defineConfig({
+  projectId: '9qg512',
   e2e: {
     baseUrl: 'https://demo.evershop.io',
     env: {
