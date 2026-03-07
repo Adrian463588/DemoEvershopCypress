@@ -1,13 +1,6 @@
 pipeline {
-    // ── 1 Agent Tunggal ────────────────────────────────────
-    agent any   // Jalankan di satu agent, tidak ada matrix/parallel node
+    agent any
 
-    // ── Tool Versions ──────────────────────────────────────
-    tools {
-        nodejs 'NodeJS-21'   // PENTING: Harus sama persis dengan nama di Jenkins > Global Tool Configuration
-    }
-
-    // ── Environment Variables ──────────────────────────────
     environment {
         CYPRESS_BASE_URL   = 'https://demo.evershop.io'
         ALLURE_RESULTS_DIR = 'allure-results'
@@ -15,18 +8,16 @@ pipeline {
         DISCORD_WEBHOOK    = credentials('discord-webhook')
     }
 
-    // ── Build Options ──────────────────────────────────────
     options {
         buildDiscarder(logRotator(numToKeepStr: '10'))
         timeout(time: 30, unit: 'MINUTES')
-        disableConcurrentBuilds()   // Mencegah 2 build jalan bersamaan
+        disableConcurrentBuilds()
         timestamps()
     }
 
-    // ── Triggers ───────────────────────────────────────────
     triggers {
-        cron('0 23 * * *')   // Nightly build jam 23:00 server time
-        githubPush()          // Webhook dari GitHub
+        cron('0 23 * * *')
+        githubPush()
     }
 
     stages {
@@ -36,7 +27,7 @@ pipeline {
                 git branch: 'main',
                     url: 'https://github.com/Adrian463588/DemoEvershopCypress.git',
                     credentialsId: 'github-credentials'
-                echo "✅ Checked out commit: ${env.GIT_COMMIT}"
+                echo "Checked out commit: ${env.GIT_COMMIT}"
             }
         }
 
@@ -45,43 +36,32 @@ pipeline {
             steps {
                 sh 'node --version'
                 sh 'npm --version'
-                sh 'npm ci'                          // Deterministik
-                sh 'npm install -g allure-commandline'
-                sh 'allure --version'
-                echo "✅ Dependencies installed"
+                sh 'npm ci'
+                sh 'npx allure-commandline --version || echo "allure-commandline will be used via npx"'
+                echo 'Dependencies installed'
             }
         }
 
         // ── Stage 3: Clean Previous Artifacts ─────────────
         stage('Clean Artifacts') {
             steps {
-                sh """
-                    rm -rf ${ALLURE_RESULTS_DIR} || true
-                    rm -rf ${ALLURE_REPORT_DIR}  || true
-                    mkdir -p ${ALLURE_RESULTS_DIR}
-                    echo "✅ Artifacts cleaned, results dir ready"
-                """
+                sh "rm -rf ${ALLURE_RESULTS_DIR} || true"
+                sh "rm -rf ${ALLURE_REPORT_DIR} || true"
+                sh "mkdir -p ${ALLURE_RESULTS_DIR}"
+                echo 'Previous artifacts cleaned'
             }
         }
 
-        // ── Stage 4: Run Cypress Tests (1 Container) ──────
+        // ── Stage 4: Run Cypress Tests ────────────────────
         stage('Run Cypress Tests') {
             steps {
-                sh """
-                    npx cypress run \\
-                        --browser chrome \\
-                        --headless \\
-                        --env allure=true,allureResultsPath=${ALLURE_RESULTS_DIR}
-                """
-                echo "✅ Cypress test execution complete"
+                sh "npx cypress run --browser chrome --headless --env allure=true,allureResultsPath=${ALLURE_RESULTS_DIR}"
+                echo 'Cypress test execution complete'
             }
             post {
                 always {
-                    // Archive screenshot & video dari single run
-                    archiveArtifacts artifacts: 'cypress/screenshots/**',
-                                     allowEmptyArchive: true
-                    archiveArtifacts artifacts: 'cypress/videos/**',
-                                     allowEmptyArchive: true
+                    archiveArtifacts artifacts: 'cypress/screenshots/**', allowEmptyArchive: true
+                    archiveArtifacts artifacts: 'cypress/videos/**', allowEmptyArchive: true
                 }
             }
         }
@@ -89,104 +69,69 @@ pipeline {
         // ── Stage 5: Generate Allure Report ───────────────
         stage('Generate Allure Report') {
             steps {
-                sh """
-                    allure generate ${ALLURE_RESULTS_DIR} \\
-                           -o ${ALLURE_REPORT_DIR} --clean
-                    echo "✅ Report generated at ${ALLURE_REPORT_DIR}/index.html"
-                """
+                sh "npx allure-commandline generate ${ALLURE_RESULTS_DIR} -o ${ALLURE_REPORT_DIR} --clean"
+                echo 'Allure report generated'
             }
         }
 
-        // ── Stage 6: Publish Report ────────────────────────
+        // ── Stage 6: Publish Report ───────────────────────
         stage('Publish Report') {
             steps {
-                // Publish via Allure Jenkins Plugin
                 allure([
                     includeProperties: true,
                     jdk: '',
                     reportBuildPolicy: 'ALWAYS',
                     results: [[path: "${ALLURE_RESULTS_DIR}"]]
                 ])
-
-                // Fallback: HTML Publisher
                 publishHTML(target: [
-                    allowMissing:          false,
+                    allowMissing: false,
                     alwaysLinkToLastBuild: true,
-                    keepAll:               true,
-                    reportDir:            "${ALLURE_REPORT_DIR}",
-                    reportFiles:          'index.html',
-                    reportName:           'Allure E2E Report — EverShop'
+                    keepAll: true,
+                    reportDir: "${ALLURE_REPORT_DIR}",
+                    reportFiles: 'index.html',
+                    reportName: 'Allure E2E Report'
                 ])
-
-                echo "✅ Report published to Jenkins UI"
+                echo 'Report published to Jenkins UI'
             }
         }
     }
 
-    // ── Post Build Actions ─────────────────────────────────
     post {
         success {
-            echo "🟢 BUILD SUCCESS"
-
+            echo 'BUILD SUCCESS'
             discordSend(
-                title:       "✅ SUCCESS — ${env.JOB_NAME} #${env.BUILD_NUMBER}",
-                description: """
-**Job:** `${env.JOB_NAME}`
-**Build:** `#${env.BUILD_NUMBER}`
-**Commit:** `${env.GIT_COMMIT?.take(8)}`
-**Duration:** `${currentBuild.durationString}`
-📊 [Allure Report](${env.BUILD_URL}Allure_20E2E_20Report/)
-🖥️ [Console Log](${env.BUILD_URL}console)
-                """,
-                footer:     "Nightly Build — ${new Date().format('dd MMM yyyy, HH:mm')} WIB",
-                link:       env.BUILD_URL,
-                result:     'SUCCESS',
-                thumbnail:  'https://www.jenkins.io/images/logos/jenkins/jenkins.png',
+                title: "SUCCESS - ${env.JOB_NAME} #${env.BUILD_NUMBER}",
+                description: "Build berhasil. Lihat report di ${env.BUILD_URL}",
+                footer: "Jenkins CI",
+                link: env.BUILD_URL,
+                result: 'SUCCESS',
                 webhookURL: env.DISCORD_WEBHOOK
             )
         }
-
         failure {
-            echo "🔴 BUILD FAILED"
-
+            echo 'BUILD FAILED'
             discordSend(
-                title:       "❌ FAILED — ${env.JOB_NAME} #${env.BUILD_NUMBER}",
-                description: """
-**Job:** `${env.JOB_NAME}`
-**Build:** `#${env.BUILD_NUMBER}`
-**Commit:** `${env.GIT_COMMIT?.take(8)}`
-**Duration:** `${currentBuild.durationString}`
-🔍 [Console Log](${env.BUILD_URL}console)
-📊 [Allure Report](${env.BUILD_URL}Allure_20E2E_20Report/)
-                """,
-                footer:     "Nightly Build — ${new Date().format('dd MMM yyyy, HH:mm')} WIB",
-                link:       env.BUILD_URL,
-                result:     'FAILURE',
-                thumbnail:  'https://www.jenkins.io/images/logos/jenkins/jenkins.png',
+                title: "FAILED - ${env.JOB_NAME} #${env.BUILD_NUMBER}",
+                description: "Build gagal. Cek log di ${env.BUILD_URL}console",
+                footer: "Jenkins CI",
+                link: env.BUILD_URL,
+                result: 'FAILURE',
                 webhookURL: env.DISCORD_WEBHOOK
             )
         }
-
         unstable {
-            echo "🟡 BUILD UNSTABLE — Ada test yang gagal"
-
+            echo 'BUILD UNSTABLE'
             discordSend(
-                title:       "⚠️ UNSTABLE — ${env.JOB_NAME} #${env.BUILD_NUMBER}",
-                description: """
-**Job:** `${env.JOB_NAME}`
-**Build:** `#${env.BUILD_NUMBER}`
-**Status:** Beberapa test case gagal
-📊 [Lihat Detail di Allure](${env.BUILD_URL}Allure_20E2E_20Report/)
-                """,
-                footer:     "Nightly Build — ${new Date().format('dd MMM yyyy, HH:mm')} WIB",
-                link:       env.BUILD_URL,
-                result:     'UNSTABLE',
+                title: "UNSTABLE - ${env.JOB_NAME} #${env.BUILD_NUMBER}",
+                description: "Beberapa test gagal. Lihat report di ${env.BUILD_URL}",
+                footer: "Jenkins CI",
+                link: env.BUILD_URL,
+                result: 'UNSTABLE',
                 webhookURL: env.DISCORD_WEBHOOK
             )
         }
-
         always {
-            cleanWs()   // Bersihkan workspace setelah setiap build
+            cleanWs()
         }
     }
 }
