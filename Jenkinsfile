@@ -1,15 +1,12 @@
 pipeline {
     agent any
 
-    tools {
-        nodejs 'NodeJS-20'
-    }
-
     environment {
         CYPRESS_BASE_URL   = 'https://demo.evershop.io'
         ALLURE_RESULTS_DIR = 'allure-results'
         ALLURE_REPORT_DIR  = 'allure-report'
         DISCORD_WEBHOOK    = credentials('discord-webhook')
+        TERM               = 'xterm'   // Fix: tput: No value for $TERM
     }
 
     options {
@@ -28,7 +25,6 @@ pipeline {
 
     stages {
 
-        // ── Stage 1: Checkout ──────────────────────────────
         stage('Checkout SCM') {
             steps {
                 git branch: 'main',
@@ -38,7 +34,6 @@ pipeline {
             }
         }
 
-        // ── Stage 2: Install Dependencies ─────────────────
         stage('Install Dependencies') {
             steps {
                 echo "\033[34m[INFO]\033[0m 📦 Checking tool versions..."
@@ -51,7 +46,6 @@ pipeline {
             }
         }
 
-        // ── Stage 3: Clean Previous Artifacts ─────────────
         stage('Clean Artifacts') {
             steps {
                 echo "\033[33m[CLEAN]\033[0m 🧹 Removing previous artifacts..."
@@ -63,19 +57,32 @@ pipeline {
         }
 
         // ── Stage 4: Run Cypress Tests ────────────────────
+        // Fix: Gunakan returnStatus:true agar build tidak langsung FAILURE
+        // saat ada test yang gagal — build akan di-set UNSTABLE
         stage('Run Cypress Tests') {
             steps {
                 echo "\033[34m[INFO]\033[0m 🚀 Starting Cypress E2E tests..."
-                sh "npx cypress run --browser electron --headless --env allure=true,allureResultsPath=${ALLURE_RESULTS_DIR}"
-                echo "\033[32m[SUCCESS]\033[0m ✅ Cypress test execution complete"
+                script {
+                    def cypressExit = sh(
+                        script: "npx cypress run --browser electron --headless --env allure=true,allureResultsPath=${ALLURE_RESULTS_DIR}",
+                        returnStatus: true   // Fix: tangkap exit code, jangan langsung fail
+                    )
+                    if (cypressExit == 0) {
+                        echo "\033[32m[SUCCESS]\033[0m ✅ All tests passed"
+                    } else {
+                        // Exit code 1 = ada test yang gagal (bukan crash)
+                        // Exit code >1 = Cypress crash / config error → tetap FAILURE
+                        if (cypressExit == 1) {
+                            echo "\033[33m[UNSTABLE]\033[0m ⚠️ Some tests failed — marking build as UNSTABLE"
+                            currentBuild.result = 'UNSTABLE'
+                        } else {
+                            echo "\033[31m[FAILED]\033[0m ❌ Cypress crashed (exit code: ${cypressExit})"
+                            error "Cypress exited with code ${cypressExit} — check configuration"
+                        }
+                    }
+                }
             }
             post {
-                success {
-                    echo "\033[32m[SUCCESS]\033[0m ✅ All tests passed"
-                }
-                failure {
-                    echo "\033[31m[FAILED]\033[0m ❌ Some tests failed — check screenshots"
-                }
                 always {
                     echo "\033[34m[INFO]\033[0m 📁 Archiving screenshots & videos..."
                     archiveArtifacts artifacts: 'cypress/screenshots/**', allowEmptyArchive: true
@@ -84,7 +91,6 @@ pipeline {
             }
         }
 
-        // ── Stage 5: Generate Allure Report ───────────────
         stage('Generate Allure Report') {
             steps {
                 echo "\033[34m[INFO]\033[0m 📊 Generating Allure report..."
@@ -93,7 +99,6 @@ pipeline {
             }
         }
 
-        // ── Stage 6: Publish Report ───────────────────────
         stage('Publish Report') {
             steps {
                 echo "\033[34m[INFO]\033[0m 📤 Publishing report to Jenkins UI..."
@@ -119,25 +124,17 @@ pipeline {
         }
     }
 
-    // ── Post Build Actions ─────────────────────────────────
     post {
         success {
             echo "\033[32m[SUCCESS]\033[0m 🟢 BUILD SUCCESS — ${env.JOB_NAME} #${env.BUILD_NUMBER}"
             discordSend(
                 title:       "✅ SUCCESS — ${env.JOB_NAME} #${env.BUILD_NUMBER}",
-                description: """
-**Job:** `${env.JOB_NAME}`
-**Build:** `#${env.BUILD_NUMBER}`
-**Commit:** `${env.GIT_COMMIT?.take(8)}`
-**Duration:** `${currentBuild.durationString}`
-📊 [Allure Report](${env.BUILD_URL}Allure_20E2E_20Report/)
-🖥️ [Console Log](${env.BUILD_URL}console)
-                """.stripIndent(),
-                footer:     "Nightly Build — ${new Date().format('dd MMM yyyy, HH:mm')} WIB",
-                link:       env.BUILD_URL,
-                result:     'SUCCESS',
-                thumbnail:  'https://www.jenkins.io/images/logos/jenkins/jenkins.png',
-                webhookURL: env.DISCORD_WEBHOOK
+                description: "Job: ${env.JOB_NAME} | Build: #${env.BUILD_NUMBER} | Commit: ${env.GIT_COMMIT} | Duration: ${currentBuild.durationString} | Report: ${env.BUILD_URL}Allure_20E2E_20Report/ | Log: ${env.BUILD_URL}console",
+                footer:      "Jenkins CI",
+                link:        env.BUILD_URL,
+                result:      'SUCCESS',
+                thumbnail:   'https://www.jenkins.io/images/logos/jenkins/jenkins.png',
+                webhookURL:  env.DISCORD_WEBHOOK
             )
         }
 
@@ -145,19 +142,12 @@ pipeline {
             echo "\033[31m[FAILED]\033[0m 🔴 BUILD FAILED — ${env.JOB_NAME} #${env.BUILD_NUMBER}"
             discordSend(
                 title:       "❌ FAILED — ${env.JOB_NAME} #${env.BUILD_NUMBER}",
-                description: """
-**Job:** `${env.JOB_NAME}`
-**Build:** `#${env.BUILD_NUMBER}`
-**Commit:** `${env.GIT_COMMIT?.take(8)}`
-**Duration:** `${currentBuild.durationString}`
-🔍 [Console Log](${env.BUILD_URL}console)
-📊 [Allure Report](${env.BUILD_URL}Allure_20E2E_20Report/)
-                """.stripIndent(),
-                footer:     "Nightly Build — ${new Date().format('dd MMM yyyy, HH:mm')} WIB",
-                link:       env.BUILD_URL,
-                result:     'FAILURE',
-                thumbnail:  'https://www.jenkins.io/images/logos/jenkins/jenkins.png',
-                webhookURL: env.DISCORD_WEBHOOK
+                description: "Job: ${env.JOB_NAME} | Build: #${env.BUILD_NUMBER} | Commit: ${env.GIT_COMMIT} | Duration: ${currentBuild.durationString} | Log: ${env.BUILD_URL}console | Report: ${env.BUILD_URL}Allure_20E2E_20Report/",
+                footer:      "Jenkins CI",
+                link:        env.BUILD_URL,
+                result:      'FAILURE',
+                thumbnail:   'https://www.jenkins.io/images/logos/jenkins/jenkins.png',
+                webhookURL:  env.DISCORD_WEBHOOK
             )
         }
 
@@ -165,16 +155,11 @@ pipeline {
             echo "\033[33m[UNSTABLE]\033[0m 🟡 BUILD UNSTABLE — Ada test yang gagal"
             discordSend(
                 title:       "⚠️ UNSTABLE — ${env.JOB_NAME} #${env.BUILD_NUMBER}",
-                description: """
-**Job:** `${env.JOB_NAME}`
-**Build:** `#${env.BUILD_NUMBER}`
-**Status:** Beberapa test case gagal
-📊 [Lihat Detail di Allure](${env.BUILD_URL}Allure_20E2E_20Report/)
-                """.stripIndent(),
-                footer:     "Nightly Build — ${new Date().format('dd MMM yyyy, HH:mm')} WIB",
-                link:       env.BUILD_URL,
-                result:     'UNSTABLE',
-                webhookURL: env.DISCORD_WEBHOOK
+                description: "Job: ${env.JOB_NAME} | Build: #${env.BUILD_NUMBER} | Commit: ${env.GIT_COMMIT} | Duration: ${currentBuild.durationString} | Beberapa test gagal | Report: ${env.BUILD_URL}Allure_20E2E_20Report/ | Log: ${env.BUILD_URL}console",
+                footer:      "Jenkins CI",
+                link:        env.BUILD_URL,
+                result:      'UNSTABLE',
+                webhookURL:  env.DISCORD_WEBHOOK
             )
         }
 
