@@ -11,7 +11,7 @@ describe('Authentication - Logout', () => {
     cy.visit('/')
   })
 
-  it('TC-003: should logout successfully', () => {
+  it('TC-003.1: should logout successfully', () => {
     // Assert on home
     cy.url().should('eq', Cypress.config().baseUrl + '/')
     

@@ -6,7 +6,7 @@ describe('Authentication - Login', () => {
     cy.wait(500)
   })
 
-  it('TC-001: should login with valid credentials', () => {
+  it('TC-001.1: should login with valid credentials', () => {
     // Navigate to login
     cy.get('div.self-center > a > svg').click()
     cy.wait(500)
@@ -37,7 +37,7 @@ describe('Authentication - Login', () => {
     cy.url().should('include', '/account')
   })
 
-  it('TC-001-Negative: should display error message on invalid login', () => {
+  it('TC-001.2: should display error message on invalid login', () => {
     // Navigate to login
     cy.get('div.self-center > a > svg').click()
     cy.wait(500)
@@ -58,7 +58,7 @@ describe('Authentication - Login', () => {
     cy.xpath('//div[@data-slot="field-error"]').should('be.visible').and('contain.text', 'Password must be at least 6 characters long')
   })
 
-  it('TC-001-Negative: should display toast error on invalid credentials', () => {
+  it('TC-001.3: should display toast error on invalid credentials', () => {
     // Navigate to login
     cy.get('div.self-center > a > svg').click()
     cy.wait(1000)

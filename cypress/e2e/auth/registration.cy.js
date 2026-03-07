@@ -7,7 +7,7 @@ describe('Authentication - Registration', () => {
     cy.visit('/')
   })
 
-  it('TC-002: should register a new account with valid data', () => {
+  it('TC-002.1: should register a new account with valid data', () => {
     const newUser = generateRandomUser()
     const fullName = `${newUser.firstName} ${newUser.lastName}`
     
@@ -39,7 +39,7 @@ describe('Authentication - Registration', () => {
     cy.url().should('include', '/account')
   })
 
-  it('TC-002-Negative: should display validation errors on invalid registration', () => {
+  it('TC-002.2: should display validation errors on invalid registration', () => {
     // Navigate to registration page
     cy.get('div.self-center > a > svg').click()
     cy.xpath("//a[normalize-space()='Create an account']").click()

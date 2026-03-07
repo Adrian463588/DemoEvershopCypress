@@ -6,7 +6,7 @@ describe('Checkout - Guest Checkout', () => {
     cy.clearLocalStorage()
   })
 
-  it('TC-003a: Flow Add to cart tanpa login - Satu produk dari dashboard', () => {
+  it('TC-005.1: Flow Add to cart tanpa login - Satu produk dari dashboard', () => {
     cy.visit('https://demo.evershop.io/')
     cy.wait(500)
     cy.contains('h3', 'Stainless Steel Thermos - Yellow').scrollIntoView()
@@ -74,7 +74,7 @@ describe('Checkout - Guest Checkout', () => {
     cy.wait(500)
   })
 
-  it('TC-003b: checkout multiple variant dari dashboard', () => {
+  it('TC-005.2: checkout multiple variant dari dashboard', () => {
     cy.visit('https://demo.evershop.io/')
     cy.wait(500)
     cy.contains('h3', 'Stainless Steel Thermos - Yellow').scrollIntoView()
@@ -150,7 +150,7 @@ describe('Checkout - Guest Checkout', () => {
     cy.contains('span', 'Checkout success').should('be.visible')
   })
 
-  it('TC-003c: checkout multiple variant multiple produk dari dashboard', () => {
+  it('TC-005.3: checkout multiple variant multiple produk dari dashboard', () => {
     cy.visit('https://demo.evershop.io/')
     cy.wait(500)
     
@@ -247,7 +247,7 @@ describe('Checkout - Guest Checkout', () => {
     cy.contains('span', 'Checkout success').should('be.visible')
   })
 
-  it('TC-003d: User checkout tanpa login barang dari Category page', () => {
+  it('TC-005.4: User checkout tanpa login barang dari Category page', () => {
     cy.visit('https://demo.evershop.io/')
     cy.wait(500)
     

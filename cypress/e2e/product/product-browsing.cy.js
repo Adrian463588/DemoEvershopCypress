@@ -4,7 +4,7 @@ describe('Product Browsing & Search', () => {
     cy.clearLocalStorage()
   })
 
-  it('TC-005: User should search for a product successfully', () => {
+  it('TC-007.1: User should search for a product successfully', () => {
     // When user in https://demo.evershop.io/
     cy.visit('https://demo.evershop.io/')
     cy.wait(500)

@@ -6,7 +6,7 @@ describe('Checkout - User/Logged In Checkout', () => {
     cy.clearLocalStorage()
   })
 
-  it('TC-004a: User (Login) checkout menggunakan email yang pre-filled di form', () => {
+  it('TC-006.1: User (Login) checkout menggunakan email yang pre-filled di form', () => {
     // Navigate to homepage
     cy.visit('https://demo.evershop.io/')
     cy.get('div.self-center > a > svg').click({ force: true })
@@ -89,7 +89,7 @@ describe('Checkout - User/Logged In Checkout', () => {
     cy.get('button[type="button"][title="CONTINUE SHOPPING"]').click({ force: true })
   })
 
-  it('TC-004b: User memverifikasi bahwa order tervalidasi terekam ke database profile', () => {
+  it('TC-006.2: User memverifikasi bahwa order tervalidasi terekam ke database profile', () => {
     // Navigate to homepage
     cy.visit('https://demo.evershop.io/')
     cy.get('div.self-center > a > svg').click({ force: true })

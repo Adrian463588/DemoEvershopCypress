@@ -5,7 +5,7 @@ describe('Authentication - Forgot Password', () => {
     cy.visit('/')
   })
 
-  it('TC-004: should verify forgot password flow and display error', () => {
+  it('TC-004.1: should verify forgot password flow and display error', () => {
     // Navigate to login
     cy.get('div.self-center > a > svg').click()
     cy.url().should('include', '/account/login')
