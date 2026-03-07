@@ -1,4 +1,6 @@
-# 📋 Sprint 2 — Technical Requirements Document
+
+
+# 📋 Sprint 2 — Technical Requirements Document *(Revisi v1.1)*
 **Project:** Cypress Automation Testing — demo.evershop.io
 **Sprint Duration:** 2 Minggu
 **Role Reviewer:** Senior SDET & System Analyst
@@ -21,17 +23,17 @@ Sprint 2 terdiri dari 3 fitur utama dengan dependensi berurutan:
 
 ### Latar Belakang
 
-Cypress default reporter hanya menghasilkan output CLI yang tidak visual dan tidak dapat di-share ke stakeholder. Allure Report menghasilkan HTML interaktif dengan timeline, steps breakdown, screenshot attachment, dan history trend. [talent500](https://talent500.com/blog/testing-workflows-with-allure/)
+Cypress default reporter hanya menghasilkan output CLI yang tidak visual dan tidak dapat di-share ke stakeholder. Allure Report menghasilkan HTML interaktif dengan timeline, steps breakdown, screenshot attachment, dan history trend.
 
 ### Dependencies & Prerequisites
 
 | Item | Versi | Keterangan |
 |---|---|---|
-| `allure-cypress` | Latest | Official adapter dari allurereport.org  [allurereport](https://allurereport.org/docs/cypress-configuration/) |
+| `allure-cypress` | Latest | Official adapter dari allurereport.org |
 | `allure-js-commons` | Latest | Runtime API untuk metadata & steps |
-| Java JDK | 11+ | Required untuk Allure CLI binary  [allurereport](https://allurereport.org/docs/cypress/) |
+| Java JDK | 11+ | Required untuk Allure CLI binary |
 | Allure CLI | Latest | Generate & serve HTML report |
-| Node.js | 18+ | Minimum requirement allure-cypress  [allurereport](https://allurereport.org/docs/cypress/) |
+| Node.js | 18+ | Minimum requirement allure-cypress |
 
 ### Acceptance Criteria
 
@@ -49,7 +51,7 @@ npm install --save-dev allure-cypress allure-js-commons
 npm install -g allure-commandline
 ```
 
-**2. Konfigurasi `cypress.config.js`** [allurereport](https://allurereport.org/docs/cypress-configuration/)
+**2. Konfigurasi `cypress.config.js`**
 ```js
 import { allureCypress } from "allure-cypress/reporter";
 import * as os from "node:os";
@@ -60,9 +62,9 @@ export default defineConfig({
       allureCypress(on, config, {
         resultsDir: "allure-results",
         environmentInfo: {
-          app_url:     "https://demo.evershop.io",
-          os_platform: os.platform(),
-          os_version:  os.version(),
+          app_url:      "https://demo.evershop.io",
+          os_platform:  os.platform(),
+          os_version:   os.version(),
           node_version: process.version,
         },
       });
@@ -72,12 +74,12 @@ export default defineConfig({
 });
 ```
 
-**3. Import di `cypress/support/e2e.js`** [allurereport](https://allurereport.org/docs/cypress/)
+**3. Import di `cypress/support/e2e.js`**
 ```js
 import "allure-cypress";
 ```
 
-**4. Metadata Annotation per Test** [allurereport](https://allurereport.org/docs/cypress/)
+**4. Metadata Annotation per Test**
 ```js
 import * as allure from "allure-js-commons";
 
@@ -133,20 +135,31 @@ project-root/
 
 ### Non-Functional Requirements
 - Report ter-generate dalam waktu < 30 detik setelah test selesai
-- Screenshot failure otomatis ter-attach tanpa konfigurasi manual [allurereport](https://allurereport.org/docs/cypress/)
+- Screenshot failure otomatis ter-attach tanpa konfigurasi manual
 - Report dapat diakses offline melalui `allure open`
 
 ***
 
-## F-02 — CI/CD GitHub Actions
+## F-02 — CI/CD GitHub Actions *(1 Container — Revisi v1.1)*
 
 ### Latar Belakang
 
-GitHub Actions memungkinkan test suite berjalan otomatis setiap kali ada `push` atau `pull_request`, memberikan feedback langsung di level commit dan PR. [docs.cypress](https://docs.cypress.io/app/continuous-integration/github-actions)
+GitHub Actions memungkinkan test suite berjalan otomatis setiap kali ada `push` atau `pull_request`, memberikan feedback langsung di level commit dan PR. Revisi ini menyederhanakan pipeline menjadi **1 container tunggal** (tanpa matrix parallelization) agar lebih mudah di-maintain, hemat quota Actions minutes, dan cocok untuk tim kecil atau repository publik.
+
+### Perubahan dari v1.0
+
+| Aspek | v1.0 (Lama) | v1.1 (Revisi) |
+|---|---|---|
+| Container | 3 parallel (matrix) | **1 container tunggal** |
+| Jumlah job | 3 job terpisah | **2 job** (install+run → report) |
+| Artifact naming | `allure-results-1/2/3` | **`allure-results`** (tunggal) |
+| Kompleksitas | Tinggi | **Sedang** |
+| Actions minutes | ~45 menit total | **~15 menit total** |
 
 ### Acceptance Criteria
 
 - [ ] Pipeline berjalan otomatis pada event: `push` ke branch `main`/`develop`, dan `pull_request`
+- [ ] Seluruh test berjalan dalam **satu runner tunggal** tanpa matrix strategy
 - [ ] Allure Report ter-upload sebagai artifact yang dapat didownload dari halaman Actions
 - [ ] Pipeline gagal (exit code non-0) jika ada test yang gagal
 - [ ] Node modules ter-cache agar waktu eksekusi efisien
@@ -158,11 +171,11 @@ GitHub Actions memungkinkan test suite berjalan otomatis setiap kali ada `push` 
 ```
 .github/
 └── workflows/
-    ├── cypress-ci.yml        # Main pipeline
+    ├── cypress-ci.yml        # Main pipeline (push & PR)
     └── cypress-nightly.yml   # Scheduled full regression
 ```
 
-**File `.github/workflows/cypress-ci.yml`** [docs.cypress](https://docs.cypress.io/app/continuous-integration/github-actions)
+**File `.github/workflows/cypress-ci.yml`** — *1 Container*
 ```yaml
 name: Cypress E2E Tests — EverShop
 
@@ -176,107 +189,105 @@ env:
   CYPRESS_BASE_URL: https://demo.evershop.io
 
 jobs:
-  # ── Job 1: Install & Cache ──────────────────────────────
-  install:
-    name: Install Dependencies
+  # ── Job 1: Install, Run Tests & Upload Results ──────────
+  cypress-run:
+    name: Run Cypress Tests (Single Container)
     runs-on: ubuntu-24.04
+
     steps:
       - name: Checkout Repository
-        uses: actions/checkout@v6
+        uses: actions/checkout@v4
 
       - name: Setup Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'           # Cache node_modules otomatis
+
+      - name: Setup Java 17 (Allure requirement)
         uses: actions/setup-java@v4
         with:
-          java-version: '17'   # Required untuk Allure CLI
+          distribution: 'temurin'
+          java-version: '17'
 
-      - name: Cypress Install (no run)
-        uses: cypress-io/github-action@v7
-        with:
-          runTests: false
+      - name: Install Dependencies
+        run: npm ci
 
       - name: Install Allure CLI
         run: npm install -g allure-commandline
 
-      - name: Cache build artifacts
-        uses: actions/upload-artifact@v6
-        with:
-          name: node-modules-cache
-          path: node_modules
-          if-no-files-found: error
-
-  # ── Job 2: Run Tests ────────────────────────────────────
-  cypress-run:
-    name: Run Cypress Tests
-    runs-on: ubuntu-24.04
-    needs: install
-    strategy:
-      fail-fast: false
-      matrix:
-        # Parallelisasi 3 container
-        containers: [1, 2, 3]
-
-    steps:
-      - name: Checkout Repository
-        uses: actions/checkout@v6
-
-      - name: Setup Java (Allure requirement)
-        uses: actions/setup-java@v4
-        with:
-          java-version: '17'
-
-      - name: Download cached node_modules
-        uses: actions/download-artifact@v7
-        with:
-          name: node-modules-cache
-          path: node_modules
+      - name: Clean Previous Allure Results
+        run: rm -rf allure-results allure-report || true
 
       - name: Run Cypress Tests
-        uses: cypress-io/github-action@v7
+        uses: cypress-io/github-action@v6
         with:
           browser: chrome
-          install: false
+          install: false         # Sudah dihandle npm ci di atas
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          CYPRESS_BASE_URL: ${{ env.CYPRESS_BASE_URL }}
+          GITHUB_TOKEN:       ${{ secrets.GITHUB_TOKEN }}
+          CYPRESS_BASE_URL:   ${{ env.CYPRESS_BASE_URL }}
+          CYPRESS_USERNAME:   ${{ secrets.CYPRESS_USERNAME }}
+          CYPRESS_PASSWORD:   ${{ secrets.CYPRESS_PASSWORD }}
 
       - name: Upload Allure Results
-        uses: actions/upload-artifact@v6
-        if: always()   # Upload meskipun test gagal
+        uses: actions/upload-artifact@v4
+        if: always()             # Upload meskipun ada test yang gagal
         with:
-          name: allure-results-${{ matrix.containers }}
+          name: allure-results
           path: allure-results/
+          if-no-files-found: warn
+          retention-days: 7
 
-  # ── Job 3: Generate & Publish Report ───────────────────
+      - name: Upload Screenshots (on failure)
+        uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: cypress-screenshots
+          path: cypress/screenshots/
+          if-no-files-found: ignore
+          retention-days: 7
+
+      - name: Upload Videos
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: cypress-videos
+          path: cypress/videos/
+          if-no-files-found: ignore
+          retention-days: 7
+
+  # ── Job 2: Generate & Publish Allure Report ─────────────
   allure-report:
     name: Generate Allure Report
     runs-on: ubuntu-24.04
     needs: cypress-run
-    if: always()
+    if: always()                 # Tetap jalan meski Job 1 gagal
 
     steps:
       - name: Checkout Repository
-        uses: actions/checkout@v6
+        uses: actions/checkout@v4
 
-      - name: Setup Java
+      - name: Setup Java 17
         uses: actions/setup-java@v4
         with:
+          distribution: 'temurin'
           java-version: '17'
 
-      - name: Download all Allure Results
-        uses: actions/download-artifact@v7
+      - name: Download Allure Results
+        uses: actions/download-artifact@v4
         with:
-          pattern: allure-results-*
-          merge-multiple: true
+          name: allure-results   # Nama tunggal, tanpa pattern matching
           path: allure-results/
 
       - name: Install Allure CLI
         run: npm install -g allure-commandline
 
-      - name: Generate Allure Report
+      - name: Generate Allure HTML Report
         run: allure generate allure-results -o allure-report --clean
 
       - name: Upload Allure HTML Report
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v4
         with:
           name: allure-html-report
           path: allure-report/
@@ -285,49 +296,115 @@ jobs:
 
 **File `.github/workflows/cypress-nightly.yml`** — Scheduled Full Regression
 ```yaml
-name: Nightly Full Regression
+name: Nightly Full Regression — EverShop
 
 on:
   schedule:
-    - cron: '0 22 * * *'   # Setiap malam jam 22:00 UTC (05:00 WIB)
-  workflow_dispatch:        # Manual trigger
+    - cron: '0 22 * * *'    # Setiap malam jam 22:00 UTC (05:00 WIB)
+  workflow_dispatch:         # Tombol trigger manual dari GitHub UI
 
 jobs:
-  full-regression:
+  nightly-regression:
+    name: Full Regression (Single Container)
     runs-on: ubuntu-24.04
+
     steps:
-      - uses: actions/checkout@v6
-      - uses: cypress-io/github-action@v7
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Setup Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      - name: Install Dependencies
+        run: npm ci
+
+      - name: Install Allure CLI
+        run: npm install -g allure-commandline
+
+      - name: Run Full Cypress Suite
+        uses: cypress-io/github-action@v6
         with:
           browser: chrome
+          install: false
         env:
-          CYPRESS_BASE_URL: https://demo.evershop.io
+          CYPRESS_BASE_URL:  https://demo.evershop.io
+          CYPRESS_USERNAME:  ${{ secrets.CYPRESS_USERNAME }}
+          CYPRESS_PASSWORD:  ${{ secrets.CYPRESS_PASSWORD }}
+
+      - name: Generate Allure Report
+        if: always()
+        run: allure generate allure-results -o allure-report --clean
+
+      - name: Upload Nightly Allure Report
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: nightly-allure-report-${{ github.run_number }}
+          path: allure-report/
+          retention-days: 30
+```
+
+### Alur Pipeline Visual
+
+```
+push / pull_request
+       │
+       ▼
+┌──────────────────────────────────────┐
+│  Job: cypress-run (ubuntu-24.04)     │
+│  1. Checkout                         │
+│  2. Setup Node 20 + Java 17          │
+│  3. npm ci (+ cache)                 │
+│  4. Install Allure CLI               │
+│  5. Clean old results                │
+│  6. npx cypress run (1 container)    │
+│  7. Upload allure-results artifact   │
+│  8. Upload screenshots / videos      │
+└──────────────┬───────────────────────┘
+               │ needs: cypress-run
+               ▼
+┌──────────────────────────────────────┐
+│  Job: allure-report (ubuntu-24.04)   │
+│  1. Download allure-results          │
+│  2. allure generate                  │
+│  3. Upload allure-html-report        │
+└──────────────────────────────────────┘
 ```
 
 ### GitHub Secrets yang Harus Dikonfigurasi
 
 | Secret Name | Deskripsi | Required |
 |---|---|---|
-| `GITHUB_TOKEN` | Auto-generated oleh GitHub Actions  [docs.cypress](https://docs.cypress.io/app/continuous-integration/github-actions) | ✅ Auto |
+| `GITHUB_TOKEN` | Auto-generated oleh GitHub Actions | ✅ Auto |
 | `CYPRESS_USERNAME` | Email login demo.evershop.io | ✅ Manual |
 | `CYPRESS_PASSWORD` | Password login demo.evershop.io | ✅ Manual |
 
 ### Non-Functional Requirements
-- Total pipeline duration ≤ 15 menit dengan 3 parallel containers
-- Artifact report tersimpan selama 30 hari
-- Re-run build tidak menghasilkan false positive [docs.cypress](https://docs.cypress.io/app/continuous-integration/github-actions)
+- Total pipeline duration ≤ **20 menit** dalam 1 container tunggal
+- Artifact report tersimpan selama **30 hari**
+- Re-run build tidak menghasilkan false positive
+- Tidak ada duplikasi artifact (karena tidak ada matrix naming)
 
 ***
 
-## F-03 — CI/CD Jenkins Pipeline
+## F-03 — CI/CD Jenkins Pipeline *(1 Container — Revisi v1.1)*
 
 ### Latar Belakang
 
-Jenkins digunakan untuk environment on-premise atau corporate network yang tidak dapat menggunakan GitHub Actions, serta untuk integrasi dengan sistem internal (Jira, Slack, email notifikasi). [blog.nashtechglobal](https://blog.nashtechglobal.com/building-a-ci-cd-pipeline-for-cypress-testing-on-windows-with-jenkins/)
+Jenkins digunakan untuk environment on-premise atau corporate network. Revisi ini memastikan pipeline berjalan pada **1 agent tunggal** tanpa distribusi ke node lain, menyederhanakan konfigurasi dan menghindari shared state antar executor.
 
 ### Prerequisites & Plugin Jenkins
 
-Plugin yang wajib diinstall melalui **Manage Jenkins → Plugin Manager**: [blog.nashtechglobal](https://blog.nashtechglobal.com/building-a-ci-cd-pipeline-for-cypress-testing-on-windows-with-jenkins/)
+Plugin wajib via **Manage Jenkins → Plugin Manager**:
 
 | Plugin | Fungsi |
 |---|---|
@@ -336,14 +413,16 @@ Plugin yang wajib diinstall melalui **Manage Jenkins → Plugin Manager**: [blog
 | **Pipeline** | Declarative pipeline via Jenkinsfile |
 | **HTML Publisher Plugin** | Publish Allure HTML report di Jenkins UI |
 | **Allure Jenkins Plugin** | Native Allure report integration |
+| **Email Extension Plugin** | Notifikasi email SUCCESS/FAILURE |
 | **Blue Ocean** | Visual pipeline view (opsional) |
 
 ### Acceptance Criteria
 
 - [ ] Jenkinsfile tersimpan di root repository (Pipeline as Code)
-- [ ] Pipeline memiliki 5 stage: Checkout → Install → Test → Generate Report → Publish
+- [ ] Pipeline berjalan pada **1 agent tunggal** (`agent any`, tanpa `node` labeling khusus)
+- [ ] Pipeline memiliki 6 stage: Checkout → Install → Clean → Test → Generate Report → Publish
 - [ ] Allure Report dapat diakses langsung dari Jenkins job page
-- [ ] Pipeline mengirim notifikasi email/Slack pada status: SUCCESS, FAILURE, UNSTABLE
+- [ ] Pipeline mengirim notifikasi email pada status: SUCCESS, FAILURE, UNSTABLE
 - [ ] Build history tersimpan minimal 10 run terakhir
 - [ ] Environment variables di-inject dari Jenkins Credentials (bukan hardcoded)
 
@@ -352,7 +431,8 @@ Plugin yang wajib diinstall melalui **Manage Jenkins → Plugin Manager**: [blog
 **File `Jenkinsfile`** di root project:
 ```groovy
 pipeline {
-    agent any
+    // ── 1 Agent Tunggal ────────────────────────────────────
+    agent any   // Jalankan di satu agent, tidak ada matrix/parallel node
 
     // ── Tool Versions ──────────────────────────────────────
     tools {
@@ -361,28 +441,26 @@ pipeline {
 
     // ── Environment Variables ──────────────────────────────
     environment {
-        CYPRESS_BASE_URL    = 'https://demo.evershop.io'
-        ALLURE_RESULTS_DIR  = 'allure-results'
-        ALLURE_REPORT_DIR   = 'allure-report'
-        // Credentials dari Jenkins Credential Store
-        CYPRESS_USERNAME    = credentials('evershop-username')
-        CYPRESS_PASSWORD    = credentials('evershop-password')
+        CYPRESS_BASE_URL   = 'https://demo.evershop.io'
+        ALLURE_RESULTS_DIR = 'allure-results'
+        ALLURE_REPORT_DIR  = 'allure-report'
+        // Credentials dari Jenkins Credential Store (tidak hardcoded)
+        CYPRESS_USERNAME   = credentials('evershop-username')
+        CYPRESS_PASSWORD   = credentials('evershop-password')
     }
 
     // ── Build Options ──────────────────────────────────────
     options {
         buildDiscarder(logRotator(numToKeepStr: '10'))
         timeout(time: 30, unit: 'MINUTES')
-        disableConcurrentBuilds()
+        disableConcurrentBuilds()   // Mencegah 2 build jalan bersamaan
         timestamps()
     }
 
     // ── Triggers ───────────────────────────────────────────
     triggers {
-        // Nightly build setiap jam 23:00
-        cron('0 23 * * *')
-        // Webhook dari GitHub (opsional, requires GitHub plugin)
-        githubPush()
+        cron('0 23 * * *')   // Nightly build jam 23:00 server time
+        githubPush()          // Webhook dari GitHub
     }
 
     stages {
@@ -393,7 +471,7 @@ pipeline {
                 git branch: 'main',
                     url: 'https://github.com/your-org/cypress-evershop.git',
                     credentialsId: 'github-credentials'
-                echo "✅ Repository checked out: ${env.GIT_COMMIT}"
+                echo "✅ Checked out commit: ${env.GIT_COMMIT}"
             }
         }
 
@@ -402,37 +480,39 @@ pipeline {
             steps {
                 sh 'node --version'
                 sh 'npm --version'
-                sh 'npm ci'   // ci lebih deterministik daripada npm install
+                sh 'npm ci'                          // Deterministik
                 sh 'npm install -g allure-commandline'
+                sh 'allure --version'
                 echo "✅ Dependencies installed"
             }
         }
 
-        // ── Stage 3: Clean Previous Results ───────────────
+        // ── Stage 3: Clean Previous Artifacts ─────────────
         stage('Clean Artifacts') {
             steps {
-                sh '''
+                sh """
                     rm -rf ${ALLURE_RESULTS_DIR} || true
                     rm -rf ${ALLURE_REPORT_DIR}  || true
                     mkdir -p ${ALLURE_RESULTS_DIR}
-                '''
-                echo "✅ Previous artifacts cleaned"
+                    echo "✅ Artifacts cleaned, results dir ready"
+                """
             }
         }
 
-        // ── Stage 4: Run Cypress Tests ─────────────────────
+        // ── Stage 4: Run Cypress Tests (1 Container) ──────
         stage('Run Cypress Tests') {
             steps {
-                sh '''
-                    npx cypress run \
-                        --browser chrome \
-                        --headless \
-                        --reporter-options resultsDir=${ALLURE_RESULTS_DIR}
-                '''
+                sh """
+                    npx cypress run \\
+                        --browser chrome \\
+                        --headless \\
+                        --env allure=true,allureResultsPath=${ALLURE_RESULTS_DIR}
+                """
+                echo "✅ Cypress test execution complete"
             }
             post {
                 always {
-                    // Archive screenshots & videos
+                    // Archive screenshot & video dari single run
                     archiveArtifacts artifacts: 'cypress/screenshots/**',
                                      allowEmptyArchive: true
                     archiveArtifacts artifacts: 'cypress/videos/**',
@@ -444,11 +524,11 @@ pipeline {
         // ── Stage 5: Generate Allure Report ───────────────
         stage('Generate Allure Report') {
             steps {
-                sh '''
-                    allure generate ${ALLURE_RESULTS_DIR} \
+                sh """
+                    allure generate ${ALLURE_RESULTS_DIR} \\
                            -o ${ALLURE_REPORT_DIR} --clean
-                '''
-                echo "✅ Allure report generated"
+                    echo "✅ Report generated at ${ALLURE_REPORT_DIR}/index.html"
+                """
             }
         }
 
@@ -460,20 +540,20 @@ pipeline {
                     includeProperties: true,
                     jdk: '',
                     reportBuildPolicy: 'ALWAYS',
-                    results: [[path: 'allure-results']]
+                    results: [[path: "${ALLURE_RESULTS_DIR}"]]
                 ])
 
-                // Fallback: Publish via HTML Publisher
+                // Fallback: HTML Publisher
                 publishHTML(target: [
                     allowMissing:          false,
                     alwaysLinkToLastBuild: true,
                     keepAll:               true,
                     reportDir:            "${ALLURE_REPORT_DIR}",
                     reportFiles:          'index.html',
-                    reportName:           'Allure E2E Report'
+                    reportName:           'Allure E2E Report — EverShop'
                 ])
 
-                echo "✅ Report published to Jenkins"
+                echo "✅ Report published to Jenkins UI"
             }
         }
     }
@@ -481,35 +561,40 @@ pipeline {
     // ── Post Build Actions ─────────────────────────────────
     post {
         success {
-            echo "🟢 BUILD SUCCESS — All tests passed"
+            echo "🟢 BUILD SUCCESS"
             emailext(
-                subject: "✅ [SUCCESS] Cypress E2E - ${env.JOB_NAME} #${env.BUILD_NUMBER}",
+                subject: "✅ [SUCCESS] Cypress E2E — ${env.JOB_NAME} #${env.BUILD_NUMBER}",
                 body: """
-                    Build berhasil!
-                    Job     : ${env.JOB_NAME}
-                    Build   : #${env.BUILD_NUMBER}
-                    URL     : ${env.BUILD_URL}
-                    Commit  : ${env.GIT_COMMIT}
+                    <h3>Build Berhasil ✅</h3>
+                    <p><b>Job:</b>    ${env.JOB_NAME}</p>
+                    <p><b>Build:</b>  #${env.BUILD_NUMBER}</p>
+                    <p><b>Commit:</b> ${env.GIT_COMMIT}</p>
+                    <p><b>Report:</b> <a href="${env.BUILD_URL}Allure_20E2E_20Report/">
+                                      Lihat Allure Report</a></p>
                 """,
+                mimeType: 'text/html',
                 to: 'qa-team@yourcompany.com'
             )
         }
         failure {
-            echo "🔴 BUILD FAILED — Test failures detected"
+            echo "🔴 BUILD FAILED"
             emailext(
-                subject: "❌ [FAILURE] Cypress E2E - ${env.JOB_NAME} #${env.BUILD_NUMBER}",
+                subject: "❌ [FAILURE] Cypress E2E — ${env.JOB_NAME} #${env.BUILD_NUMBER}",
                 body: """
-                    Build GAGAL! Segera periksa laporan.
-                    Job     : ${env.JOB_NAME}
-                    Build   : #${env.BUILD_NUMBER}
-                    URL     : ${env.BUILD_URL}
-                    Report  : ${env.BUILD_URL}Allure_20E2E_20Report/
+                    <h3>Build GAGAL ❌</h3>
+                    <p><b>Job:</b>    ${env.JOB_NAME}</p>
+                    <p><b>Build:</b>  #${env.BUILD_NUMBER}</p>
+                    <p><b>Commit:</b> ${env.GIT_COMMIT}</p>
+                    <p><b>Log:</b>    <a href="${env.BUILD_URL}console">Console Output</a></p>
+                    <p><b>Report:</b> <a href="${env.BUILD_URL}Allure_20E2E_20Report/">
+                                      Lihat Allure Report</a></p>
                 """,
+                mimeType: 'text/html',
                 to: 'qa-team@yourcompany.com'
             )
         }
         unstable {
-            echo "🟡 BUILD UNSTABLE — Some tests failed"
+            echo "🟡 BUILD UNSTABLE — Ada test yang gagal"
         }
         always {
             cleanWs()   // Bersihkan workspace setelah setiap build
@@ -518,26 +603,51 @@ pipeline {
 }
 ```
 
+### Alur Pipeline Visual
+
+```
+Trigger (push / cron / manual)
+        │
+        ▼
+┌─────────────────────────────────┐
+│      agent any (1 executor)     │
+│                                 │
+│  Stage 1 │ Checkout SCM         │
+│     ↓    │                      │
+│  Stage 2 │ Install Dependencies │
+│     ↓    │                      │
+│  Stage 3 │ Clean Artifacts      │
+│     ↓    │                      │
+│  Stage 4 │ Run Cypress Tests    │──► archive screenshots/videos
+│     ↓    │                      │
+│  Stage 5 │ Generate Allure      │
+│     ↓    │                      │
+│  Stage 6 │ Publish Report       │──► Jenkins UI (Allure + HTML)
+└──────────┼──────────────────────┘
+           │
+    post: success → email ✅
+    post: failure  → email ❌
+    post: always   → cleanWs()
+```
+
 ### Konfigurasi Jenkins Job
 
-Langkah setup di Jenkins UI: [blog.nashtechglobal](https://blog.nashtechglobal.com/building-a-ci-cd-pipeline-for-cypress-testing-on-windows-with-jenkins/)
+| Langkah | Konfigurasi |
+|---|---|
+| New Item | Pilih **Pipeline**, beri nama `cypress-evershop-e2e` |
+| General | Centang *Discard old builds* → max 10 builds |
+| Build Triggers | *GitHub hook trigger* + *Build periodically* |
+| Pipeline Definition | **Pipeline script from SCM** |
+| SCM | Git → masukkan URL repo + `github-credentials` |
+| Script Path | `Jenkinsfile` |
 
-1. **New Item** → pilih **Pipeline** → beri nama `cypress-evershop-e2e`
-2. **General**: centang *Discard old builds* → Max 10 builds
-3. **Build Triggers**: centang *GitHub hook trigger* dan/atau *Build periodically*
-4. **Pipeline**: pilih **Pipeline script from SCM**
-   - SCM: **Git**
-   - Repository URL: URL repo GitHub
-   - Script Path: `Jenkinsfile`
-5. **Save → Build Now**
+### Credential yang Dikonfigurasi di Jenkins
 
-### Credential yang Harus Dikonfigurasi di Jenkins
+Navigasi **Manage Jenkins → Credentials → Global → Add Credentials**:
 
-Navigasi ke **Manage Jenkins → Credentials → Global**:
-
-| ID Credential | Type | Value |
+| ID | Type | Value |
 |---|---|---|
-| `github-credentials` | Username/Password | GitHub access token |
+| `github-credentials` | Username with Password | GitHub PAT token |
 | `evershop-username` | Secret Text | Email demo.evershop.io |
 | `evershop-password` | Secret Text | Password demo.evershop.io |
 
@@ -549,17 +659,17 @@ Navigasi ke **Manage Jenkins → Credentials → Global**:
 cypress-evershop/
 ├── .github/
 │   └── workflows/
-│       ├── cypress-ci.yml
-│       └── cypress-nightly.yml
+│       ├── cypress-ci.yml          # Main pipeline — 1 container
+│       └── cypress-nightly.yml     # Nightly regression — 1 container
 ├── cypress/
 │   ├── e2e/
 │   ├── support/
-│   │   └── e2e.js           # import "allure-cypress"
+│   │   └── e2e.js                  # import "allure-cypress"
 │   └── fixtures/
-├── allure-results/           # Gitignore
-├── allure-report/            # Gitignore
-├── cypress.config.js         # allureCypress setup
-├── Jenkinsfile               # Pipeline as Code
+├── allure-results/                  # .gitignore
+├── allure-report/                   # .gitignore
+├── cypress.config.js                # allureCypress setup
+├── Jenkinsfile                      # Pipeline as Code
 ├── package.json
 └── .gitignore
 ```
@@ -571,10 +681,11 @@ cypress-evershop/
 | Kriteria | Verifikasi |
 |---|---|
 | Allure Report ter-generate lokal | `npm run test:report` menghasilkan HTML |
-| Screenshot failure ter-attach | Cek di laporan Allure setelah test gagal |
-| GitHub Actions berjalan di PR | Cek tab "Actions" setelah push ke branch |
+| Screenshot failure ter-attach | Cek Allure setelah test gagal |
+| GitHub Actions 2 job berhasil | Cek tab "Actions" setelah push ke branch |
 | Artifact report dapat didownload | Download dari halaman GitHub Actions run |
-| Jenkins pipeline 5 stage berhasil | Blue/Green indicator di Jenkins UI |
+| Tidak ada matrix/parallel job | Konfirmasi tidak ada `strategy.matrix` di YAML |
+| Jenkins pipeline 6 stage berhasil | Blue/Green indicator di Jenkins UI |
+| 1 agent tunggal pada Jenkins | Konfirmasi `agent any` tanpa node labeling |
 | Notifikasi email terkirim | Cek inbox setelah build SUCCESS/FAILURE |
-| Tidak ada credentials hardcoded | Code review & grep scan pada codebase |
-
+| Tidak ada credentials hardcoded | Code review + `grep -r "password"` scan |

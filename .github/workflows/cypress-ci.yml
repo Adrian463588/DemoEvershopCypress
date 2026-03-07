@@ -7,53 +7,14 @@ on:
     branches: [main, develop]
 
 env:
+  # ✅ FIX: hapus format markdown link, pakai URL plain
   CYPRESS_BASE_URL: https://demo.evershop.io
 
 jobs:
-  # ── Job 1: Install & Cache ──────────────────────────────
-  install:
-    name: Install Dependencies
-    runs-on: ubuntu-24.04
-    steps:
-      - name: Checkout Repository
-        uses: actions/checkout@v4
-
-      - name: Setup Node.js 20
-        uses: actions/setup-node@v4
-        with:
-          node-version: 20
-
-      - name: Cypress Install (no run)
-        uses: cypress-io/github-action@v6
-        with:
-          runTests: false
-
-      # Upload node_modules
-      - name: Cache node_modules
-        uses: actions/upload-artifact@v4
-        with:
-          name: node-modules-cache
-          path: node_modules
-          if-no-files-found: error
-
-      # ✅ FIX: Upload Cypress binary (~/.cache/Cypress) secara terpisah
-      - name: Cache Cypress Binary
-        uses: actions/upload-artifact@v4
-        with:
-          name: cypress-binary-cache
-          path: ~/.cache/Cypress
-          if-no-files-found: error
-
-
-  # ── Job 2: Run Tests ────────────────────────────────────
+  # ── Job 1: Install & Run Tests ──────────────────────────
   cypress-run:
     name: Run Cypress Tests
     runs-on: ubuntu-24.04
-    needs: install
-    strategy:
-      fail-fast: false
-      matrix:
-        containers: [1, 2, 3]
 
     steps:
       - name: Checkout Repository
@@ -62,24 +23,15 @@ jobs:
       - name: Setup Node.js 20
         uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: '20'
+          cache: 'npm'
 
-      - name: Download node_modules
-        uses: actions/download-artifact@v4
-        with:
-          name: node-modules-cache
-          path: node_modules
+      # ✅ FIX: Java & Allure CLI tidak dipakai di job ini → dihapus
+      - name: Install Dependencies
+        run: npm ci
 
-      # ✅ FIX: Restore Cypress binary ke path yang benar
-      - name: Restore Cypress Binary
-        uses: actions/download-artifact@v4
-        with:
-          name: cypress-binary-cache
-          path: ~/.cache/Cypress
-
-      # ✅ FIX: Pastikan binary punya permission execute
-      - name: Fix Cypress Binary Permissions
-        run: chmod -R +x ~/.cache/Cypress
+      - name: Clean Previous Allure Results
+        run: rm -rf allure-results allure-report || true
 
       - name: Run Cypress Tests
         uses: cypress-io/github-action@v6
@@ -89,18 +41,41 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           CYPRESS_BASE_URL: ${{ env.CYPRESS_BASE_URL }}
+          CYPRESS_USERNAME: ${{ secrets.CYPRESS_USERNAME }}
+          CYPRESS_PASSWORD: ${{ secrets.CYPRESS_PASSWORD }}
 
       - name: Upload Allure Results
         uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: allure-results-${{ matrix.containers }}
+          name: allure-results
           path: allure-results/
+          # ✅ FIX: 'error' agar mudah debug jika allure plugin tidak aktif
+          if-no-files-found: error
+          retention-days: 7
+
+      - name: Upload Screenshots (on failure)
+        uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: cypress-screenshots
+          path: cypress/screenshots/
+          if-no-files-found: ignore
+          retention-days: 7
+
+      - name: Upload Videos
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: cypress-videos
+          path: cypress/videos/
+          if-no-files-found: ignore
+          retention-days: 7
 
 
-  # ── Job 3: Generate & Publish Report ───────────────────
+  # ── Job 2: Generate & Publish Allure Report ─────────────
   allure-report:
-    name: Generate & Publish Allure Report
+    name: Generate Allure Report
     runs-on: ubuntu-24.04
     needs: cypress-run
     if: always()
@@ -125,11 +100,10 @@ jobs:
           distribution: 'temurin'
           java-version: '17'
 
-      - name: Download & Merge all Allure Results
+      - name: Download Allure Results
         uses: actions/download-artifact@v4
         with:
-          pattern: allure-results-*
-          merge-multiple: true
+          name: allure-results
           path: allure-results/
 
       - name: Generate Allure Report with History

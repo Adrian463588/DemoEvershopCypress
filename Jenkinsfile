@@ -1,35 +1,34 @@
 pipeline {
-    agent any
+    // ── 1 Agent Tunggal ────────────────────────────────────
+    agent any   // Jalankan di satu agent, tidak ada matrix/parallel node
 
     // ── Tool Versions ──────────────────────────────────────
     tools {
-        nodejs 'NodeJS-20'   // Match name in Global Tool Config
+        nodejs 'NodeJS-20'   // Sesuaikan dengan nama di Global Tool Config
     }
 
     // ── Environment Variables ──────────────────────────────
     environment {
-        CYPRESS_BASE_URL    = 'https://demo.evershop.io'
-        ALLURE_RESULTS_DIR  = 'allure-results'
-        ALLURE_REPORT_DIR   = 'allure-report'
-        // Credentials from Jenkins Credential Store
-        CYPRESS_USERNAME    = credentials('evershop-username')
-        CYPRESS_PASSWORD    = credentials('evershop-password')
+        CYPRESS_BASE_URL   = 'https://demo.evershop.io'
+        ALLURE_RESULTS_DIR = 'allure-results'
+        ALLURE_REPORT_DIR  = 'allure-report'
+        // Credentials dari Jenkins Credential Store (tidak hardcoded)
+        CYPRESS_USERNAME   = credentials('evershop-username')
+        CYPRESS_PASSWORD   = credentials('evershop-password')
     }
 
     // ── Build Options ──────────────────────────────────────
     options {
         buildDiscarder(logRotator(numToKeepStr: '10'))
         timeout(time: 30, unit: 'MINUTES')
-        disableConcurrentBuilds()
+        disableConcurrentBuilds()   // Mencegah 2 build jalan bersamaan
         timestamps()
     }
 
     // ── Triggers ───────────────────────────────────────────
     triggers {
-        // Nightly build at 23:00
-        cron('0 23 * * *')
-        // Webhook from GitHub (optional, requires GitHub plugin)
-        githubPush()
+        cron('0 23 * * *')   // Nightly build jam 23:00 server time
+        githubPush()          // Webhook dari GitHub
     }
 
     stages {
@@ -40,7 +39,7 @@ pipeline {
                 git branch: 'main',
                     url: 'https://github.com/Adrian463588/DemoEvershopCypress.git',
                     credentialsId: 'github-credentials'
-                echo "✅ Repository checked out: ${env.GIT_COMMIT}"
+                echo "✅ Checked out commit: ${env.GIT_COMMIT}"
             }
         }
 
@@ -49,36 +48,39 @@ pipeline {
             steps {
                 sh 'node --version'
                 sh 'npm --version'
-                sh 'npm ci'
+                sh 'npm ci'                          // Deterministik
                 sh 'npm install -g allure-commandline'
+                sh 'allure --version'
                 echo "✅ Dependencies installed"
             }
         }
 
-        // ── Stage 3: Clean Previous Results ───────────────
+        // ── Stage 3: Clean Previous Artifacts ─────────────
         stage('Clean Artifacts') {
             steps {
-                sh '''
+                sh """
                     rm -rf ${ALLURE_RESULTS_DIR} || true
                     rm -rf ${ALLURE_REPORT_DIR}  || true
                     mkdir -p ${ALLURE_RESULTS_DIR}
-                '''
-                echo "✅ Previous artifacts cleaned"
+                    echo "✅ Artifacts cleaned, results dir ready"
+                """
             }
         }
 
-        // ── Stage 4: Run Cypress Tests ─────────────────────
+        // ── Stage 4: Run Cypress Tests (1 Container) ──────
         stage('Run Cypress Tests') {
             steps {
-                sh '''
-                    npx cypress run \
-                        --browser chrome \
-                        --headless
-                '''
+                sh """
+                    npx cypress run \\
+                        --browser chrome \\
+                        --headless \\
+                        --env allure=true,allureResultsPath=${ALLURE_RESULTS_DIR}
+                """
+                echo "✅ Cypress test execution complete"
             }
             post {
                 always {
-                    // Archive screenshots & videos
+                    // Archive screenshot & video dari single run
                     archiveArtifacts artifacts: 'cypress/screenshots/**',
                                      allowEmptyArchive: true
                     archiveArtifacts artifacts: 'cypress/videos/**',
@@ -90,11 +92,11 @@ pipeline {
         // ── Stage 5: Generate Allure Report ───────────────
         stage('Generate Allure Report') {
             steps {
-                sh '''
-                    allure generate ${ALLURE_RESULTS_DIR} \
+                sh """
+                    allure generate ${ALLURE_RESULTS_DIR} \\
                            -o ${ALLURE_REPORT_DIR} --clean
-                '''
-                echo "✅ Allure report generated"
+                    echo "✅ Report generated at ${ALLURE_REPORT_DIR}/index.html"
+                """
             }
         }
 
@@ -106,20 +108,20 @@ pipeline {
                     includeProperties: true,
                     jdk: '',
                     reportBuildPolicy: 'ALWAYS',
-                    results: [[path: 'allure-results']]
+                    results: [[path: "${ALLURE_RESULTS_DIR}"]]
                 ])
 
-                // Fallback: Publish via HTML Publisher
+                // Fallback: HTML Publisher
                 publishHTML(target: [
                     allowMissing:          false,
                     alwaysLinkToLastBuild: true,
                     keepAll:               true,
                     reportDir:            "${ALLURE_REPORT_DIR}",
                     reportFiles:          'index.html',
-                    reportName:           'Allure E2E Report'
+                    reportName:           'Allure E2E Report — EverShop'
                 ])
 
-                echo "✅ Report published to Jenkins"
+                echo "✅ Report published to Jenkins UI"
             }
         }
     }
@@ -127,38 +129,43 @@ pipeline {
     // ── Post Build Actions ─────────────────────────────────
     post {
         success {
-            echo "🟢 BUILD SUCCESS — All tests passed"
+            echo "🟢 BUILD SUCCESS"
             emailext(
-                subject: "✅ [SUCCESS] Cypress E2E - ${env.JOB_NAME} #${env.BUILD_NUMBER}",
+                subject: "✅ [SUCCESS] Cypress E2E — ${env.JOB_NAME} #${env.BUILD_NUMBER}",
                 body: """
-                    Build berhasil!
-                    Job     : ${env.JOB_NAME}
-                    Build   : #${env.BUILD_NUMBER}
-                    URL     : ${env.BUILD_URL}
-                    Commit  : ${env.GIT_COMMIT}
+                    <h3>Build Berhasil ✅</h3>
+                    <p><b>Job:</b>    ${env.JOB_NAME}</p>
+                    <p><b>Build:</b>  #${env.BUILD_NUMBER}</p>
+                    <p><b>Commit:</b> ${env.GIT_COMMIT}</p>
+                    <p><b>Report:</b> <a href="${env.BUILD_URL}Allure_20E2E_20Report/">
+                                      Lihat Allure Report</a></p>
                 """,
+                mimeType: 'text/html',
                 to: 'qa-team@yourcompany.com'
             )
         }
         failure {
-            echo "🔴 BUILD FAILED — Test failures detected"
+            echo "🔴 BUILD FAILED"
             emailext(
-                subject: "❌ [FAILURE] Cypress E2E - ${env.JOB_NAME} #${env.BUILD_NUMBER}",
+                subject: "❌ [FAILURE] Cypress E2E — ${env.JOB_NAME} #${env.BUILD_NUMBER}",
                 body: """
-                    Build GAGAL! Segera periksa laporan.
-                    Job     : ${env.JOB_NAME}
-                    Build   : #${env.BUILD_NUMBER}
-                    URL     : ${env.BUILD_URL}
-                    Report  : ${env.BUILD_URL}Allure_20E2E_20Report/
+                    <h3>Build GAGAL ❌</h3>
+                    <p><b>Job:</b>    ${env.JOB_NAME}</p>
+                    <p><b>Build:</b>  #${env.BUILD_NUMBER}</p>
+                    <p><b>Commit:</b> ${env.GIT_COMMIT}</p>
+                    <p><b>Log:</b>    <a href="${env.BUILD_URL}console">Console Output</a></p>
+                    <p><b>Report:</b> <a href="${env.BUILD_URL}Allure_20E2E_20Report/">
+                                      Lihat Allure Report</a></p>
                 """,
+                mimeType: 'text/html',
                 to: 'qa-team@yourcompany.com'
             )
         }
         unstable {
-            echo "🟡 BUILD UNSTABLE — Some tests failed"
+            echo "🟡 BUILD UNSTABLE — Ada test yang gagal"
         }
         always {
-            cleanWs()   // Clean workspace after each build
+            cleanWs()   // Bersihkan workspace setelah setiap build
         }
     }
 }
