@@ -1,0 +1,13 @@
+{
+  "guest": {
+    "email": "guest@test.com",
+    "firstName": "Guest",
+    "lastName": "User",
+    "telephone": "1234567890",
+    "address": "123 Main St",
+    "city": "Test City",
+    "country": "US",
+    "province": "CA",
+    "postcode": "90210"
+  }
+}

@@ -1,0 +1,12 @@
+{
+  "validUser": {
+    "email": "test@evershop.io",
+    "password": "Test123!@#",
+    "firstName": "John",
+    "lastName": "Doe"
+  },
+  "invalidUser": {
+    "email": "invalid@email",
+    "password": "123"
+  }
+}
