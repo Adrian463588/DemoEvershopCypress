@@ -55,7 +55,7 @@ pipeline {
         // ── Stage 4: Run Cypress Tests ────────────────────
         stage('Run Cypress Tests') {
             steps {
-                sh "npx cypress run --browser chrome --headless --env allure=true,allureResultsPath=${ALLURE_RESULTS_DIR}"
+                sh "npx cypress run --browser electron --headless --env allure=true,allureResultsPath=${ALLURE_RESULTS_DIR}"
                 echo 'Cypress test execution complete'
             }
             post {
