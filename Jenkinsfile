@@ -96,6 +96,13 @@ pipeline {
             steps {
                 echo "\033[34m[INFO]\033[0m 📤 Publishing report to Jenkins UI..."
 
+                allure([
+                    includeProperties: true,
+                    jdk: '',
+                    reportBuildPolicy: 'ALWAYS',
+                    results: [[path: "${ALLURE_RESULTS_DIR}"]]
+                ])
+
                 publishHTML(target: [
                     allowMissing:          false,
                     alwaysLinkToLastBuild: true,
