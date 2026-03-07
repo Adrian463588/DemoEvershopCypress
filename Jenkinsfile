@@ -17,7 +17,7 @@ pipeline {
         timeout(time: 30, unit: 'MINUTES')
         disableConcurrentBuilds()
         timestamps()
-
+        ansiColor('xterm')   
     }
 
     triggers {
@@ -131,7 +131,7 @@ pipeline {
 **Duration:** `${currentBuild.durationString}`
 📊 [Allure Report](${env.BUILD_URL}Allure_20E2E_20Report/)
 🖥️ [Console Log](${env.BUILD_URL}console)
-                """,
+                """.stripIndent(),
                 footer:     "Nightly Build — ${new Date().format('dd MMM yyyy, HH:mm')} WIB",
                 link:       env.BUILD_URL,
                 result:     'SUCCESS',
@@ -151,7 +151,7 @@ pipeline {
 **Duration:** `${currentBuild.durationString}`
 🔍 [Console Log](${env.BUILD_URL}console)
 📊 [Allure Report](${env.BUILD_URL}Allure_20E2E_20Report/)
-                """,
+                """.stripIndent(),
                 footer:     "Nightly Build — ${new Date().format('dd MMM yyyy, HH:mm')} WIB",
                 link:       env.BUILD_URL,
                 result:     'FAILURE',
@@ -169,7 +169,7 @@ pipeline {
 **Build:** `#${env.BUILD_NUMBER}`
 **Status:** Beberapa test case gagal
 📊 [Lihat Detail di Allure](${env.BUILD_URL}Allure_20E2E_20Report/)
-                """,
+                """.stripIndent(),
                 footer:     "Nightly Build — ${new Date().format('dd MMM yyyy, HH:mm')} WIB",
                 link:       env.BUILD_URL,
                 result:     'UNSTABLE',
