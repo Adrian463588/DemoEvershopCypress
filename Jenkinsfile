@@ -4,7 +4,7 @@ pipeline {
 
     // ── Tool Versions ──────────────────────────────────────
     tools {
-        nodejs 'NodeJS-20'   // Sesuaikan dengan nama di Global Tool Config
+        nodejs 'NodeJS-21'   // PENTING: Harus sama persis dengan nama di Jenkins > Global Tool Configuration
     }
 
     // ── Environment Variables ──────────────────────────────
@@ -12,9 +12,7 @@ pipeline {
         CYPRESS_BASE_URL   = 'https://demo.evershop.io'
         ALLURE_RESULTS_DIR = 'allure-results'
         ALLURE_REPORT_DIR  = 'allure-report'
-        // Credentials dari Jenkins Credential Store (tidak hardcoded)
-        CYPRESS_USERNAME   = credentials('evershop-username')
-        CYPRESS_PASSWORD   = credentials('evershop-password')
+        DISCORD_WEBHOOK    = credentials('discord-webhook')
     }
 
     // ── Build Options ──────────────────────────────────────
@@ -32,7 +30,6 @@ pipeline {
     }
 
     stages {
-
         // ── Stage 1: Checkout ──────────────────────────────
         stage('Checkout SCM') {
             steps {
@@ -130,40 +127,64 @@ pipeline {
     post {
         success {
             echo "🟢 BUILD SUCCESS"
-            emailext(
-                subject: "✅ [SUCCESS] Cypress E2E — ${env.JOB_NAME} #${env.BUILD_NUMBER}",
-                body: """
-                    <h3>Build Berhasil ✅</h3>
-                    <p><b>Job:</b>    ${env.JOB_NAME}</p>
-                    <p><b>Build:</b>  #${env.BUILD_NUMBER}</p>
-                    <p><b>Commit:</b> ${env.GIT_COMMIT}</p>
-                    <p><b>Report:</b> <a href="${env.BUILD_URL}Allure_20E2E_20Report/">
-                                      Lihat Allure Report</a></p>
-                """,
-                mimeType: 'text/html',
-                to: 'qa-team@yourcompany.com'
+
+            discordSend(
+                title:       "✅ SUCCESS — ${env.JOB_NAME} #${env.BUILD_NUMBER}",
+                description: """
+**Job:** `${env.JOB_NAME}`
+**Build:** `#${env.BUILD_NUMBER}`
+**Commit:** `${env.GIT_COMMIT?.take(8)}`
+**Duration:** `${currentBuild.durationString}`
+📊 [Allure Report](${env.BUILD_URL}Allure_20E2E_20Report/)
+🖥️ [Console Log](${env.BUILD_URL}console)
+                """.stripIndent(),
+                footer:     "Nightly Build — ${new Date().format('dd MMM yyyy, HH:mm')} WIB",
+                link:       env.BUILD_URL,
+                result:     'SUCCESS',
+                thumbnail:  'https://www.jenkins.io/images/logos/jenkins/jenkins.png',
+                webhookURL: env.DISCORD_WEBHOOK
             )
         }
+
         failure {
             echo "🔴 BUILD FAILED"
-            emailext(
-                subject: "❌ [FAILURE] Cypress E2E — ${env.JOB_NAME} #${env.BUILD_NUMBER}",
-                body: """
-                    <h3>Build GAGAL ❌</h3>
-                    <p><b>Job:</b>    ${env.JOB_NAME}</p>
-                    <p><b>Build:</b>  #${env.BUILD_NUMBER}</p>
-                    <p><b>Commit:</b> ${env.GIT_COMMIT}</p>
-                    <p><b>Log:</b>    <a href="${env.BUILD_URL}console">Console Output</a></p>
-                    <p><b>Report:</b> <a href="${env.BUILD_URL}Allure_20E2E_20Report/">
-                                      Lihat Allure Report</a></p>
-                """,
-                mimeType: 'text/html',
-                to: 'qa-team@yourcompany.com'
+
+            discordSend(
+                title:       "❌ FAILED — ${env.JOB_NAME} #${env.BUILD_NUMBER}",
+                description: """
+**Job:** `${env.JOB_NAME}`
+**Build:** `#${env.BUILD_NUMBER}`
+**Commit:** `${env.GIT_COMMIT?.take(8)}`
+**Duration:** `${currentBuild.durationString}`
+🔍 [Console Log](${env.BUILD_URL}console)
+📊 [Allure Report](${env.BUILD_URL}Allure_20E2E_20Report/)
+                """.stripIndent(),
+                footer:     "Nightly Build — ${new Date().format('dd MMM yyyy, HH:mm')} WIB",
+                link:       env.BUILD_URL,
+                result:     'FAILURE',
+                thumbnail:  'https://www.jenkins.io/images/logos/jenkins/jenkins.png',
+                webhookURL: env.DISCORD_WEBHOOK
             )
         }
+
         unstable {
             echo "🟡 BUILD UNSTABLE — Ada test yang gagal"
+
+            discordSend(
+                title:       "⚠️ UNSTABLE — ${env.JOB_NAME} #${env.BUILD_NUMBER}",
+                description: """
+**Job:** `${env.JOB_NAME}`
+**Build:** `#${env.BUILD_NUMBER}`
+**Status:** Beberapa test case gagal
+📊 [Lihat Detail di Allure](${env.BUILD_URL}Allure_20E2E_20Report/)
+                """.stripIndent(),
+                footer:     "Nightly Build — ${new Date().format('dd MMM yyyy, HH:mm')} WIB",
+                link:       env.BUILD_URL,
+                result:     'UNSTABLE',
+                webhookURL: env.DISCORD_WEBHOOK
+            )
         }
+
         always {
             cleanWs()   // Bersihkan workspace setelah setiap build
         }
