@@ -7,11 +7,10 @@ on:
     branches: [main, develop]
 
 env:
-  # ✅ FIX: hapus format markdown link, pakai URL plain
   CYPRESS_BASE_URL: https://demo.evershop.io
 
 jobs:
-  # ── Job 1: Install & Run Tests ──────────────────────────
+  # ── Job 1: Run Tests ────────────────────────────────────
   cypress-run:
     name: Run Cypress Tests
     runs-on: ubuntu-24.04
@@ -26,7 +25,6 @@ jobs:
           node-version: '20'
           cache: 'npm'
 
-      # ✅ FIX: Java & Allure CLI tidak dipakai di job ini → dihapus
       - name: Install Dependencies
         run: npm ci
 
@@ -50,7 +48,6 @@ jobs:
         with:
           name: allure-results
           path: allure-results/
-          # ✅ FIX: 'error' agar mudah debug jika allure plugin tidak aktif
           if-no-files-found: error
           retention-days: 7
 
@@ -85,10 +82,30 @@ jobs:
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0   # ✅ FIX: ambil semua branch termasuk gh-pages
+
+      # ✅ FIX: Inisialisasi gh-pages jika belum ada (first run)
+      - name: Initialize gh-pages branch (first run only)
+        run: |
+          if ! git ls-remote --heads origin gh-pages | grep -q "gh-pages"; then
+            echo "Branch gh-pages belum ada. Membuat branch baru..."
+            git checkout --orphan gh-pages
+            git reset --hard
+            touch .nojekyll
+            git add .nojekyll
+            git config user.email "github-actions[bot]@users.noreply.github.com"
+            git config user.name "github-actions[bot]"
+            git commit -m "Initialize gh-pages branch"
+            git push origin gh-pages
+            git checkout -
+            echo "Branch gh-pages berhasil dibuat."
+          else
+            echo "Branch gh-pages sudah ada. Melewati inisialisasi."
+          fi
 
       - name: Get Allure History from gh-pages
         uses: actions/checkout@v4
-        if: always()
         continue-on-error: true
         with:
           ref: gh-pages
@@ -106,6 +123,13 @@ jobs:
           name: allure-results
           path: allure-results/
 
+      # ✅ FIX: Debug — pastikan allure-results tidak kosong
+      - name: Verify Allure Results exist
+        run: |
+          echo "=== Isi allure-results/ ==="
+          ls -la allure-results/ || echo "KOSONG atau tidak ada!"
+          echo "Total files: $(find allure-results -type f | wc -l)"
+
       - name: Generate Allure Report with History
         uses: simple-elf/allure-report-action@master
         if: always()
@@ -116,6 +140,13 @@ jobs:
           allure_report: allure-report
           allure_history: allure-history
           keep_reports: 20
+
+      # ✅ FIX: Debug — pastikan allure-history ter-generate
+      - name: Verify Allure History generated
+        run: |
+          echo "=== Isi allure-history/ ==="
+          ls -la allure-history/ || echo "KOSONG atau tidak ada!"
+          echo "Total files: $(find allure-history -type f | wc -l)"
 
       - name: Upload Allure HTML Report (Artifact)
         uses: actions/upload-artifact@v4
@@ -132,4 +163,4 @@ jobs:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           publish_branch: gh-pages
           publish_dir: allure-history
-          force_orphan: true
+          keep_files: false
