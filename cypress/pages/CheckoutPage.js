@@ -16,7 +16,7 @@ class CheckoutPage extends BasePage {
   get shippingMethodRadio() { return cy.get('[role="radio"], input[type="radio"]') }
   get codPaymentOption()    { return cy.get('form').find('div').contains('Cash On Delivery') }
   get creditCardOption()    { return cy.get('form').find('div').contains('Credit Card') }
-  get placeOrderButton()    { return cy.get('button').contains('Place Order') }
+  get placeOrderButton()    { return cy.xpath('//button[normalize-space()="Place Order"]', { timeout: 15000 }) }
 
   // ─── Actions ───────────────────────────────────────────────────────
 
@@ -103,12 +103,21 @@ class CheckoutPage extends BasePage {
   }
 
   /**
-   * Click Place Order button
+   * Click Place Order button (COD)
    */
   clickPlaceOrder() {
     this.scrollToBottom()
     cy.wait(1000)
-    this.placeOrderButton.last().click({ force: true })
+    this.placeOrderButton.click({ force: true })
+  }
+
+  /**
+   * Click Place Order button (Credit Card / Stripe)
+   */
+  clickPlaceOrderCreditCard() {
+    cy.scrollTo('bottom')
+    cy.wait(1000)
+    cy.xpath('//div/div[4]/button').click({ force: true })
   }
 
   /**

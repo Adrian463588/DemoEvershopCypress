@@ -81,7 +81,7 @@ describe('Checkout - Credit Card Payment', () => {
     cy.intercept('POST', '**/api/**').as('paymentApi')
 
     // Place Order
-    CheckoutPage.clickPlaceOrder()
+    CheckoutPage.clickPlaceOrderCreditCard()
 
     // Tunggu payment API call selesai
     cy.wait('@paymentApi', { timeout: 30000 }).then((interception) => {
@@ -109,7 +109,7 @@ describe('Checkout - Credit Card Payment', () => {
     cy.intercept('POST', '**/api/**').as('paymentApi')
 
     // Place Order
-    CheckoutPage.clickPlaceOrder()
+    CheckoutPage.clickPlaceOrderCreditCard()
 
     // Tunggu payment API call selesai
     cy.wait('@paymentApi', { timeout: 30000 })
