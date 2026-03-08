@@ -23,6 +23,7 @@
     "allure-cypress": "^3.6.0",
     "allure-js-commons": "^3.6.0",
     "cypress": "^13.17.0",
+    "cypress-iframe": "^1.0.1",
     "cypress-file-upload": "^5.0.8",
     "cypress-multi-reporters": "^2.0.5",
     "cypress-real-events": "^1.15.0",

@@ -1,4 +1,5 @@
 import './commands'
 import '@cypress/xpath'
+import 'cypress-iframe'
 import 'cypress-real-events'
 import 'allure-cypress'

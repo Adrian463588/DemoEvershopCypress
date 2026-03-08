@@ -108,7 +108,7 @@ describe('Checkout - Credit Card Payment', () => {
     cy.wait(500)
 
     // Isi expiration date
-    cy.iframe(iframeSelector).find('#payment-expiryInput').type('04/26', { force: true })
+    cy.iframe(iframeSelector).find('#payment-expiryInput').type('12/29', { force: true })
     cy.wait(500)
 
     // Isi CVC
