@@ -6,8 +6,22 @@
     "telephone": "1234567890",
     "address": "123 Main St",
     "city": "Test City",
-    "country": "US",
-    "province": "CA",
+    "country": "United States",
+    "province": "California",
     "postcode": "90210"
+  },
+  "validCard": {
+    "number": "4242424242424242",
+    "expiry": "12/29",
+    "cvc": "242",
+    "country": "US",
+    "postalCode": "12345"
+  },
+  "declinedCard": {
+    "number": "4000000000009995",
+    "expiry": "12/29",
+    "cvc": "242",
+    "country": "US",
+    "postalCode": "12345"
   }
 }

@@ -1,4 +1,12 @@
 import { generateRandomUser } from '../../support/helpers/data-generator'
+import HeaderComponent from '../../pages/HeaderComponent'
+import LoginPage from '../../pages/LoginPage'
+import AccountPage from '../../pages/AccountPage'
+import HomePage from '../../pages/HomePage'
+import ProductDetailPage from '../../pages/ProductDetailPage'
+import CartSidebarComponent from '../../pages/CartSidebarComponent'
+import CheckoutPage from '../../pages/CheckoutPage'
+import CheckoutSuccessPage from '../../pages/CheckoutSuccessPage'
 
 describe('Checkout - User/Logged In Checkout', () => {
   beforeEach(() => {
@@ -6,230 +14,126 @@ describe('Checkout - User/Logged In Checkout', () => {
     cy.clearLocalStorage()
   })
 
-  it('TC-006.1: User (Login) checkout menggunakan email yang pre-filled di form', () => {
-    // Navigate to homepage
-    cy.visit('https://demo.evershop.io/')
+  /**
+   * Helper: login and verify account
+   */
+  function loginAndVerify() {
+    cy.visit('/')
     cy.wait(1000)
-    cy.get('div.self-center > a > svg').click({ force: true })
+    HeaderComponent.clickAccountIcon()
     cy.wait(1000)
     
-    // Assert login page
-    cy.url().should('include', 'https://demo.evershop.io/account/login')
-    cy.contains('Please sign in to your account').should('be.visible')
+    LoginPage.assertUrl('/account/login')
+    LoginPage.pageTitle.should('be.visible')
     
     cy.fixture('users').then((users) => {
-      cy.get('#field-email').type(users.validUser.email, { force: true })
-      cy.wait(500)
-      cy.get('#field-password').type(users.validUser.password, { force: true })
-      cy.wait(500)
+      LoginPage.login(users.validUser.email, users.validUser.password)
     })
-    cy.contains('Sign In').click({ force: true })
     
-    // Wait for login and navigate to account page
     cy.wait(3000)
-    cy.url({ timeout: 10000 }).should('eq', 'https://demo.evershop.io/')
-    cy.get('div.self-center > a > svg').click({ force: true })
+    LoginPage.assertExactUrl('https://demo.evershop.io/')
+    HeaderComponent.clickAccountIcon()
     cy.wait(2000)
-    cy.get('h1').contains("My Account").should('be.visible')
-    cy.url().should('include', 'https://demo.evershop.io/account')
+    AccountPage.assertOnAccountPage()
+  }
+
+  /**
+   * Helper: add thermos to cart and proceed to checkout
+   */
+  function addThermosAndCheckout() {
+    cy.visit('/')
+    cy.wait(1000)
     
-    // Navigate back to product and add to cart
-    cy.visit('https://demo.evershop.io/')
+    HomePage.clickProduct('Stainless Steel Thermos - Yellow')
     cy.wait(1000)
-    cy.contains('h3', 'Stainless Steel Thermos - Yellow').scrollIntoView()
-    cy.wait(500)
-    cy.contains('h3', 'Stainless Steel Thermos - Yellow').click({ force: true })
-    cy.wait(1000)
-    cy.url().should('include', 'https://demo.evershop.io/accessories/stainless-steel-thermos-yellow')
-    cy.contains('button', 'White').click({ force: true })
-    cy.wait(500)
-    cy.get('[name="qty"]').clear({ force: true }).type('1', { force: true })
-    cy.wait(500)
-    cy.contains('button', 'ADD TO CART').click({ force: true })
+    CheckoutPage.assertUrl('/accessories/stainless-steel-thermos-yellow')
+    
+    ProductDetailPage.addProductToCart('White', 1)
     cy.wait(2000)
     
-    // Assert Side Bar and proceed to checkout (use text-based selector instead of dynamic #mui-5)
-    cy.xpath("//button[normalize-space()='Checkout']", { timeout: 10000 }).should('be.visible')
-    cy.xpath("//button[normalize-space()='Checkout']").click({ force: true })
+    CartSidebarComponent.clickCheckout()
     cy.wait(1000)
-    cy.url().should('include', 'https://demo.evershop.io/checkout')
-    
-    // Assert email pre-filled handling
-    cy.wait(1000)
-    cy.get('p').contains('newuser@gmail.com').should('exist')
-    
-    // Fill Shipping Address
+    CheckoutPage.assertUrl('/checkout')
+  }
+
+  /**
+   * Helper: build shipping data (no email — pre-filled for logged-in user)
+   */
+  function buildShippingData() {
     const guest = generateRandomUser()
-    const fullName = `${guest.firstName} ${guest.lastName}`
+    return {
+      fullName: `${guest.firstName} ${guest.lastName}`,
+      phone: guest.phone,
+      address: guest.address,
+      city: guest.city,
+      country: 'United States',
+      zipCode: guest.zipCode
+    }
+  }
+
+  it('TC-006.1: User (Login) checkout menggunakan email yang pre-filled di form', () => {
+    loginAndVerify()
+    addThermosAndCheckout()
     
-    cy.get('[id="field-shippingAddress.full_name"]').scrollIntoView().type(fullName, { force: true })
-    cy.wait(500)
-    cy.xpath("//input[@id='field-shippingAddress.telephone']").type(guest.phone, { force: true })
-    cy.wait(500)
-    cy.get('[id="field-shippingAddress.address_1"]').type(guest.address, { force: true })
-    cy.wait(500)
-    cy.scrollTo('bottom')
-    cy.wait(500)
-    cy.get('[name="shippingAddress.address_1"]').type(guest.address, { force: true })
-    cy.wait(500)
-    cy.get('[id="field-shippingAddress.city"]').type(guest.city, { force: true })
-    cy.wait(500)
-    
-    // Dropdowns
-    cy.xpath("//button[@id='field-shippingAddress.country']").click({ force: true })
-    cy.wait(500)
-    cy.get('div.flex.flex-1.whitespace-nowrap').contains('United States').click({ force: true })
-    cy.wait(500)
-    
-    cy.xpath("//button[@id='field-shippingAddress.province']").click({ force: true })
-    cy.wait(500)
-    cy.xpath("//div[position()=2]/div[position()=1]/div[position()=1]/div[position()=3]/div[position()=1]").click({ force: true })
-    cy.wait(500)
-    
-    cy.get('[name="shippingAddress.postcode"]').type(guest.zipCode, { force: true })
-    cy.wait(1500)
-    
-    // Shipping method and Payment
-    cy.scrollTo('bottom')
+    // Assert email pre-filled
     cy.wait(1000)
-    cy.get('[role="radio"], input[type="radio"]').eq(0).click({ force: true })
-    cy.wait(1000)
-    cy.scrollTo('bottom')
-    cy.wait(1000)
-    // Payment Method
-    cy.get('form').find('div').contains('Cash On Delivery').click({ force: true })
-    cy.wait(1000)
-    cy.scrollTo('bottom')
-    cy.wait(1000)
-    cy.xpath('//div/div[4]/button').last().click({ force: true })
+    CheckoutPage.assertPrefilledEmail('newuser@gmail.com')
     
-    // Checkout Success Phase
+    // Fill Shipping Address (no email — already pre-filled)
+    const shippingData = buildShippingData()
+    CheckoutPage.fillShippingAddress(shippingData)
+    
+    // Shipping & Payment
+    CheckoutPage.selectShippingMethod(0)
+    cy.wait(1000)
+    CheckoutPage.selectPaymentCOD()
+    cy.wait(1000)
+    CheckoutPage.clickPlaceOrder()
+    
+    // Checkout Success
     cy.wait(3000)
-    cy.contains('span', 'Checkout success', { timeout: 15000 }).should('be.visible')
-    cy.wait(1000)
-    cy.scrollTo('bottom')
-    cy.wait(500)
-    cy.get('button[type="button"][title="CONTINUE SHOPPING"]').click({ force: true })
-    cy.wait(500)
+    CheckoutSuccessPage.verifyAndContinue()
   })
 
   it('TC-006.2: User memverifikasi bahwa order tervalidasi terekam ke database profile', () => {
-    // Navigate to homepage
-    cy.visit('https://demo.evershop.io/')
-    cy.wait(1000)
-    cy.get('div.self-center > a > svg').click({ force: true })
-    cy.wait(1000)
-    
-    // Assert login page
-    cy.url().should('include', 'https://demo.evershop.io/account/login')
-    cy.contains('Please sign in to your account').should('be.visible')
-    
-    cy.fixture('users').then((users) => {
-      cy.get('#field-email').type(users.validUser.email, { force: true })
-      cy.wait(500)
-      cy.get('#field-password').type(users.validUser.password, { force: true })
-      cy.wait(500)
-    })
-    cy.contains('Sign In').click({ force: true })
-    
-    // Wait for login and navigate to account page
-    cy.wait(3000)
-    cy.url({ timeout: 10000 }).should('eq', 'https://demo.evershop.io/')
-    cy.get('div.self-center > a > svg').click({ force: true })
-    cy.wait(2000)
-    cy.get('h1').contains("My Account").should('be.visible')
-    cy.url().should('include', 'https://demo.evershop.io/account')
-    
-    // Navigate back to product and add to cart
-    cy.visit('https://demo.evershop.io/')
-    cy.wait(1000)
-    cy.contains('h3', 'Stainless Steel Thermos - Yellow').scrollIntoView()
-    cy.wait(500)
-    cy.contains('h3', 'Stainless Steel Thermos - Yellow').click({ force: true })
-    cy.wait(1000)
-    cy.url().should('include', 'https://demo.evershop.io/accessories/stainless-steel-thermos-yellow')
-    cy.contains('button', 'White').click({ force: true })
-    cy.wait(500)
-    cy.get('[name="qty"]').clear({ force: true }).type('1', { force: true })
-    cy.wait(500)
-    cy.contains('button', 'ADD TO CART').click({ force: true })
-    cy.wait(2000)
-    
-    // Assert Side Bar and proceed to checkout (use text-based selector instead of dynamic #mui-5)
-    cy.xpath("//button[normalize-space()='Checkout']", { timeout: 10000 }).should('be.visible')
-    cy.xpath("//button[normalize-space()='Checkout']").click({ force: true })
-    cy.wait(1000)
-    cy.url().should('include', 'https://demo.evershop.io/checkout')
+    loginAndVerify()
+    addThermosAndCheckout()
     
     cy.wait(1000)
-    cy.get('p').contains('newuser@gmail.com').should('exist')
+    CheckoutPage.assertPrefilledEmail('newuser@gmail.com')
     
     // Fill Shipping Address
-    const guest = generateRandomUser()
-    const fullName = `${guest.firstName} ${guest.lastName}`
+    const shippingData = buildShippingData()
+    CheckoutPage.fillShippingAddress(shippingData)
     
-    cy.get('[id="field-shippingAddress.full_name"]').scrollIntoView().type(fullName, { force: true })
-    cy.wait(500)
-    cy.xpath("//input[@id='field-shippingAddress.telephone']").type(guest.phone, { force: true })
-    cy.wait(500)
-    cy.get('[id="field-shippingAddress.address_1"]').type(guest.address, { force: true })
-    cy.wait(500)
-    cy.scrollTo('bottom')
-    cy.wait(500)
-    cy.get('[name="shippingAddress.address_1"]').type(guest.address, { force: true })
-    cy.wait(500)
-    cy.get('[id="field-shippingAddress.city"]').type(guest.city, { force: true })
-    cy.wait(500)
-    
-    // Dropdowns
-    cy.xpath("//button[@id='field-shippingAddress.country']").click({ force: true })
-    cy.wait(500)
-    cy.get('div.flex.flex-1.whitespace-nowrap').contains('United States').click({ force: true })
-    cy.wait(500)
-    
-    cy.xpath("//button[@id='field-shippingAddress.province']").click({ force: true })
-    cy.wait(500)
-    cy.xpath("//div[position()=2]/div[position()=1]/div[position()=1]/div[position()=3]/div[position()=1]").click({ force: true })
-    cy.wait(500)
-    
-    cy.get('[name="shippingAddress.postcode"]').type(guest.zipCode, { force: true })
-    cy.wait(1500)
-    
-    // Shipping method and Payment
-    cy.scrollTo('bottom')
+    // Shipping & Payment
+    CheckoutPage.selectShippingMethod(0)
     cy.wait(1000)
-    cy.get('[role="radio"], input[type="radio"]').eq(0).click({ force: true })
+    CheckoutPage.selectPaymentCOD()
     cy.wait(1000)
-    cy.scrollTo('bottom')
-    cy.wait(1000)
-    cy.get('form').find('div').contains('Cash On Delivery').click({ force: true })
-    cy.wait(1000)
-    cy.scrollTo('bottom')
-    cy.wait(1000)
-    cy.xpath('//div/div[4]/button').last().click({ force: true })
+    CheckoutPage.clickPlaceOrder()
     
-    // Checkout Success Phase
+    // Checkout Success
     cy.wait(3000)
-    cy.contains('span', 'Checkout success', { timeout: 15000 }).should('be.visible')
+    CheckoutSuccessPage.assertCheckoutSuccess()
     
     // Grab Order ID and verify in profile
-    cy.get('span').contains('Order #').invoke('text').then((orderText) => {
+    CheckoutSuccessPage.getOrderId().then((orderText) => {
       const orderId = orderText.trim()
       cy.wait(1000)
-      cy.scrollTo('bottom')
-      cy.wait(500)
-      cy.get('button[type="button"][title="CONTINUE SHOPPING"]').click({ force: true })
+      CheckoutSuccessPage.clickContinueShopping()
       cy.wait(2000)
       
-      // Click profile icon
-      cy.get('div.self-center > a > svg').click({ force: true })
+      // Navigate to profile
+      HeaderComponent.clickAccountIcon()
       cy.wait(2000)
-      cy.url().should('include', 'https://demo.evershop.io/account')
-      cy.xpath("//h2[normalize-space()='Recent Orders']").should('exist')
-      cy.xpath("//div[normalize-space()='Stainless Steel Thermos - White']").should('exist')
-      // Note: orderId contains "Order #1234", to match profile, we might need "Order: #1234"
+      AccountPage.assertUrl('/account')
+      AccountPage.recentOrders.should('exist')
+      AccountPage.verifyOrderExists('Stainless Steel Thermos - White')
+      
+      // Verify order ID in profile
       const profileOrderId = orderId.replace('Order ', 'Order: ')
-      cy.xpath(`//span[normalize-space()='${profileOrderId}']`).should('exist')
+      AccountPage.verifyOrderId(profileOrderId)
     })
   })
 })

@@ -1,3 +1,7 @@
+import HeaderComponent from '../../pages/HeaderComponent'
+import LoginPage from '../../pages/LoginPage'
+import AccountPage from '../../pages/AccountPage'
+
 describe('Authentication - Logout', () => {
   beforeEach(() => {
     cy.clearCookies()
@@ -15,25 +19,24 @@ describe('Authentication - Logout', () => {
 
   it('TC-003.1: should logout successfully', () => {
     // Assert on home
-    cy.url().should('eq', Cypress.config().baseUrl + '/')
+    AccountPage.assertExactUrl(Cypress.config().baseUrl + '/')
     
     // Navigate to account
-    cy.get('div.self-center > a > svg').click({ force: true })
+    HeaderComponent.clickAccountIcon()
     cy.wait(2000)
-    cy.get('h1').contains('My Account').should('be.visible')
-    cy.url().should('include', '/account')
+    AccountPage.assertOnAccountPage()
     
     // Logout
-    cy.xpath("//a[normalize-space()='Logout']").click({ force: true })
+    AccountPage.logout()
     cy.wait(2000)
     
     // Assert redirect to home
-    cy.url({ timeout: 10000 }).should('eq', Cypress.config().baseUrl + '/')
+    AccountPage.assertExactUrl(Cypress.config().baseUrl + '/')
     
     // Verify logged out state when clicking account icon
-    cy.get('div.self-center > a > svg').click({ force: true })
+    HeaderComponent.clickAccountIcon()
     cy.wait(2000)
-    cy.url().should('include', '/account/login')
-    cy.contains('Please sign in to your account').should('be.visible')
+    LoginPage.assertUrl('/account/login')
+    LoginPage.pageTitle.should('be.visible')
   })
 })

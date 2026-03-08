@@ -1,3 +1,7 @@
+import HeaderComponent from '../../pages/HeaderComponent'
+import LoginPage from '../../pages/LoginPage'
+import ForgotPasswordPage from '../../pages/ForgotPasswordPage'
+
 describe('Authentication - Forgot Password', () => {
   beforeEach(() => {
     cy.clearCookies()
@@ -7,25 +11,21 @@ describe('Authentication - Forgot Password', () => {
 
   it('TC-004.1: should verify forgot password flow and display error', () => {
     // Navigate to login
-    cy.get('div.self-center > a > svg').click()
-    cy.url().should('include', '/account/login')
-    cy.contains('Please sign in to your account').should('be.visible')
+    HeaderComponent.clickAccountIcon()
+    LoginPage.assertUrl('/account/login')
+    LoginPage.pageTitle.should('be.visible')
     
     // Navigate to forgot password
-    cy.get('a[href*="/account/reset-password"]').click()
-    cy.url().should('include', '/account/reset-password')
+    ForgotPasswordPage.navigateFromLogin()
     
-    // Fill email
+    // Fill email & submit
     cy.fixture('users').then((users) => {
-      cy.get('[name="email"]').type(users.validUser.email)
+      ForgotPasswordPage.submitResetPassword(users.validUser.email)
     })
-    
-    // Submit
-    cy.get('button[type="submit"]').click()
 
     // PASTI ERROR DARI SISTEM, DAN TIDAK BERHASIL 
     
     // Assert error toast for forgot password
-    cy.get('.Toastify__toast-body').should('be.visible')
+    ForgotPasswordPage.toastMessage.should('be.visible')
   })
 })

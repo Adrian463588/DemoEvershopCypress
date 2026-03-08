@@ -1,4 +1,11 @@
 import { generateRandomUser } from '../../support/helpers/data-generator'
+import HomePage from '../../pages/HomePage'
+import ProductDetailPage from '../../pages/ProductDetailPage'
+import CartSidebarComponent from '../../pages/CartSidebarComponent'
+import CartPage from '../../pages/CartPage'
+import CategoryPage from '../../pages/CategoryPage'
+import CheckoutPage from '../../pages/CheckoutPage'
+import CheckoutSuccessPage from '../../pages/CheckoutSuccessPage'
 
 describe('Checkout - Guest Checkout', () => {
   beforeEach(() => {
@@ -6,374 +13,206 @@ describe('Checkout - Guest Checkout', () => {
     cy.clearLocalStorage()
   })
 
-  it('TC-005.1: Flow Add to cart tanpa login - Satu produk dari dashboard', () => {
-    cy.visit('https://demo.evershop.io/')
-    cy.wait(500)
-    cy.contains('h3', 'Stainless Steel Thermos - Yellow').scrollIntoView()
-    cy.wait(500)
-    cy.contains('h3', 'Stainless Steel Thermos - Yellow').click({ force: true })
-    cy.wait(1000)
-    cy.url().should('include', '/accessories/stainless-steel-thermos-yellow')
-    cy.contains('button', 'White').click({ force: true })
-    cy.wait(500)
-    cy.get('[name="qty"]').clear({ force: true }).type('1', { force: true })
-    cy.wait(500)
-    cy.contains('button', 'ADD TO CART').click({ force: true })
-    cy.wait(1000)
-    cy.get('#mui-5').should('be.visible')
-    cy.xpath("//button[normalize-space()='Checkout']").click({ force: true })
-    cy.wait(1000)
-    cy.url().should('include', '/checkout')
-
+  /**
+   * Helper: generate shipping data from random user
+   */
+  function buildShippingData(includeEmail = true) {
     const guest = generateRandomUser()
-    const fullName = `${guest.firstName} ${guest.lastName}`
+    const data = {
+      fullName: `${guest.firstName} ${guest.lastName}`,
+      phone: guest.phone,
+      address: guest.address,
+      city: guest.city,
+      country: 'United States',
+      zipCode: guest.zipCode
+    }
+    if (includeEmail) data.email = guest.email
+    return data
+  }
 
-    cy.get('[name="contact.email"]').type(guest.email, { force: true })
+  it('TC-005.1: Flow Add to cart tanpa login - Satu produk dari dashboard', () => {
+    HomePage.open()
     cy.wait(500)
-    cy.get('[id="field-shippingAddress.full_name"]').scrollIntoView().type(fullName, { force: true })
-    cy.wait(500)
-    cy.xpath("//input[@id='field-shippingAddress.telephone']").type(guest.phone, { force: true })
-    cy.wait(500)
-    cy.get('[id="field-shippingAddress.address_1"]').type(guest.address, { force: true })
-    cy.wait(500)
-    cy.scrollTo('bottom')
-    cy.wait(500)
-    cy.get('[name="shippingAddress.address_1"]').type(guest.address, { force: true })
-    cy.wait(500)
-    cy.get('[id="field-shippingAddress.city"]').type(guest.city, { force: true })
-    cy.wait(500)
-    cy.xpath("//button[@id='field-shippingAddress.country']").click({ force: true })
-    cy.wait(500)
-    cy.get('div.flex.flex-1.whitespace-nowrap').contains('United States').click({ force: true })
-    cy.wait(500)
-    cy.xpath("//button[@id='field-shippingAddress.province']").click({ force: true })
-    cy.wait(500)
-    cy.xpath("//div[position()=2]/div[position()=1]/div[position()=1]/div[position()=3]/div[position()=1]").click({ force: true })
-    cy.wait(500)
-    cy.get('[name="shippingAddress.postcode"]').type(guest.zipCode, { force: true })
-    cy.wait(1500)
+    
+    // Add product to cart
+    HomePage.clickProduct('Stainless Steel Thermos - Yellow')
+    cy.wait(1000)
+    CheckoutPage.assertUrl('/accessories/stainless-steel-thermos-yellow')
+    
+    ProductDetailPage.addProductToCart('White', 1)
+    cy.wait(1000)
+    ProductDetailPage.sidebarOverlay.should('be.visible')
+    
+    // Proceed to checkout
+    CartSidebarComponent.clickCheckout()
+    cy.wait(1000)
+    CheckoutPage.assertUrl('/checkout')
 
-    cy.scrollTo('bottom')
+    // Fill shipping & complete COD checkout
+    const shippingData = buildShippingData()
+    CheckoutPage.fillShippingAddress(shippingData)
+    
+    CheckoutPage.selectShippingMethod(0)
     cy.wait(1000)
-    // Shipping method
-    cy.get('[role="radio"], input[type="radio"]').eq(0).click({ force: true })
+    CheckoutPage.selectPaymentCOD()
     cy.wait(1000)
-    cy.scrollTo('bottom')
-    cy.wait(1000)
-    // Payment Method
-    cy.get('form').find('div').contains('Cash On Delivery').click({ force: true })
-    cy.wait(1000)
-    cy.scrollTo('bottom')
-    cy.wait(1000)
-    cy.xpath('//div/div[4]/button').click({ force: true })
+    CheckoutPage.clickPlaceOrder()
     cy.wait(2000)
     
-    cy.contains('span', 'Checkout success').should('be.visible')
-    cy.wait(500)
-    cy.get('button[type="button"][title="CONTINUE SHOPPING"]').click({ force: true })
-    cy.wait(500)
+    // Assert success
+    CheckoutSuccessPage.verifyAndContinue()
   })
 
   it('TC-005.2: checkout multiple variant dari dashboard', () => {
-    cy.visit('https://demo.evershop.io/')
+    HomePage.open()
     cy.wait(500)
-    cy.contains('h3', 'Stainless Steel Thermos - Yellow').scrollIntoView()
-    cy.wait(500)
-    cy.contains('h3', 'Stainless Steel Thermos - Yellow').click({ force: true })
+    
+    HomePage.clickProduct('Stainless Steel Thermos - Yellow')
     cy.wait(1000)
-    cy.url().should('include', '/accessories/stainless-steel-thermos-yellow')
+    CheckoutPage.assertUrl('/accessories/stainless-steel-thermos-yellow')
     
     // First variant
-    cy.contains('button', 'White').click({ force: true })
-    cy.wait(500)
-    cy.get('[name="qty"]').clear({ force: true }).type('1', { force: true })
-    cy.wait(500)
-    cy.contains('button', 'ADD TO CART').click({ force: true })
-    cy.wait(1000)
-    cy.xpath("//div[@data-slot='sheet-overlay']", { timeout: 10000 }).click({ force: true })
-    cy.wait(1500)
+    ProductDetailPage.addProductAndContinueShopping('White', 1)
     
     // Second variant
-    cy.contains('button', /(Yellow|Black|Green|Red)/).click({ force: true })
-    cy.wait(500)
-    cy.get('[name="qty"]').clear({ force: true }).type('1', { force: true })
-    cy.wait(500)
-    cy.contains('button', 'ADD TO CART').click({ force: true })
+    ProductDetailPage.addAnotherVariant(/(Yellow|Black|Green|Red)/, 1)
     cy.wait(1000)
     
-    cy.get('#mui-5').should('be.visible')
-    cy.xpath("//button[normalize-space()='Checkout']").click({ force: true })
+    ProductDetailPage.sidebarOverlay.should('be.visible')
+    CartSidebarComponent.clickCheckout()
     cy.wait(1000)
-    cy.url().should('include', '/checkout')
+    CheckoutPage.assertUrl('/checkout')
 
-    const guest = generateRandomUser()
-    const fullName = `${guest.firstName} ${guest.lastName}`
-
-    cy.get('[name="contact.email"]').type(guest.email, { force: true })
-    cy.wait(500)
-    cy.get('[id="field-shippingAddress.full_name"]').scrollIntoView().type(fullName, { force: true })
-    cy.wait(500)
-    cy.xpath("//input[@id='field-shippingAddress.telephone']").type(guest.phone, { force: true })
-    cy.wait(500)
-    cy.get('[id="field-shippingAddress.address_1"]').type(guest.address, { force: true })
-    cy.wait(500)
-    cy.scrollTo('bottom')
-    cy.wait(500)
-    cy.get('[name="shippingAddress.address_1"]').type(guest.address, { force: true })
-    cy.wait(500)
-    cy.get('[id="field-shippingAddress.city"]').type(guest.city, { force: true })
-    cy.wait(500)
-    cy.xpath("//button[@id='field-shippingAddress.country']").click({ force: true })
-    cy.wait(500)
-    cy.get('div.flex.flex-1.whitespace-nowrap').contains('United States').click({ force: true })
-    cy.wait(500)
-    cy.xpath("//button[@id='field-shippingAddress.province']").click({ force: true })
-    cy.wait(500)
-    cy.xpath("//div[position()=2]/div[position()=1]/div[position()=1]/div[position()=3]/div[position()=1]").click({ force: true })
-    cy.wait(500)
-    cy.get('[name="shippingAddress.postcode"]').type(guest.zipCode, { force: true })
-    cy.wait(1500)
-
-    cy.scrollTo('bottom')
+    // Fill shipping & complete COD checkout
+    const shippingData = buildShippingData()
+    CheckoutPage.fillShippingAddress(shippingData)
+    
+    CheckoutPage.selectShippingMethod(0)
     cy.wait(1000)
-    cy.get('[role="radio"], input[type="radio"]').eq(0).click({ force: true })
+    CheckoutPage.selectPaymentCOD()
     cy.wait(1000)
-    cy.scrollTo('bottom')
-    cy.wait(1000)
-    cy.get('form').find('div').contains('Cash On Delivery').click({ force: true })
-    cy.wait(1000)
-    cy.scrollTo('bottom')
-    cy.wait(1000)
-    cy.xpath('//div/div[4]/button').click({ force: true })
+    CheckoutPage.clickPlaceOrder()
     cy.wait(2000)
     
-    cy.contains('span', 'Checkout success').should('be.visible')
+    CheckoutSuccessPage.assertCheckoutSuccess()
   })
 
   it('TC-005.3: checkout multiple variant multiple produk dari dashboard', () => {
-    cy.visit('https://demo.evershop.io/')
+    HomePage.open()
     cy.wait(500)
     
-    cy.contains('h3', 'Stainless Steel Thermos - Yellow').scrollIntoView()
-    cy.wait(500)
-    cy.contains('h3', 'Stainless Steel Thermos - Yellow').click({ force: true })
+    // ── Product 1: Stainless Steel Thermos ──
+    HomePage.clickProduct('Stainless Steel Thermos - Yellow')
     cy.wait(1000)
-    cy.url().should('include', '/accessories/stainless-steel-thermos-yellow')
-    cy.contains('button', 'White').click({ force: true })
-    cy.wait(500)
-    cy.get('[name="qty"]').clear({ force: true }).type('1', { force: true })
-    cy.wait(500)
-    cy.contains('button', 'ADD TO CART').click({ force: true })
-    cy.wait(1000)
-    cy.xpath("//div[@data-slot='sheet-overlay']", { timeout: 10000 }).click({ force: true })
-    cy.wait(1500)
-    cy.contains('button', /(Yellow|Black|Green|Red)/).click({ force: true })
-    cy.wait(500)
-    cy.get('[name="qty"]').clear({ force: true }).type('1', { force: true })
-    cy.wait(500)
-    cy.contains('button', 'ADD TO CART').click({ force: true })
+    CheckoutPage.assertUrl('/accessories/stainless-steel-thermos-yellow')
+    
+    ProductDetailPage.addProductAndContinueShopping('White', 1)
+    ProductDetailPage.addAnotherVariant(/(Yellow|Black|Green|Red)/, 1)
     cy.wait(1000)
     
-    cy.contains('a', 'Home').click({ force: true })
+    // ── Product 2: Modern Ceramic Vase ──
+    HomePage.navigateHome()
     cy.wait(1000)
-    cy.url().should('eq', 'https://demo.evershop.io/')
+    HomePage.assertExactUrl('https://demo.evershop.io/')
     
-    cy.contains('h3', 'Modern Ceramic Vase - Green').scrollIntoView()
-    cy.wait(500)
-    cy.contains('h3', 'Modern Ceramic Vase - Green').click({ force: true })
+    HomePage.clickProduct('Modern Ceramic Vase - Green')
     cy.wait(1000)
-    cy.url().should('include', '/accessories/modern-ceramic-vase-green')
-    cy.contains('button', 'White').click({ force: true })
-    cy.wait(500)
-    cy.get('[name="qty"]').clear({ force: true }).type('1', { force: true })
-    cy.wait(500)
-    cy.contains('button', 'ADD TO CART').click({ force: true })
-    cy.wait(1000)
-    cy.xpath("//div[@data-slot='sheet-overlay']", { timeout: 10000 }).click({ force: true })
-    cy.wait(1500)
-    cy.contains('button', /(Yellow|Black|Green|Red)/).click({ force: true })
-    cy.wait(500)
-    cy.get('[name="qty"]').clear({ force: true }).type('1', { force: true })
-    cy.wait(500)
-    cy.contains('button', 'ADD TO CART').click({ force: true })
+    CheckoutPage.assertUrl('/accessories/modern-ceramic-vase-green')
+    
+    ProductDetailPage.addProductAndContinueShopping('White', 1)
+    ProductDetailPage.addAnotherVariant(/(Yellow|Black|Green|Red)/, 1)
     cy.wait(1000)
 
-    cy.get('#mui-5').should('be.visible')
-    cy.xpath("//button[normalize-space()='Checkout']").click({ force: true })
+    // Proceed to checkout
+    ProductDetailPage.sidebarOverlay.should('be.visible')
+    CartSidebarComponent.clickCheckout()
     cy.wait(1000)
-    cy.url().should('include', '/checkout')
+    CheckoutPage.assertUrl('/checkout')
 
-    const guest = generateRandomUser()
-    const fullName = `${guest.firstName} ${guest.lastName}`
-
-    cy.get('[name="contact.email"]').type(guest.email, { force: true })
-    cy.wait(500)
-    cy.get('[id="field-shippingAddress.full_name"]').scrollIntoView().type(fullName, { force: true })
-    cy.wait(500)
-    cy.xpath("//input[@id='field-shippingAddress.telephone']").type(guest.phone, { force: true })
-    cy.wait(500)
-    cy.get('[id="field-shippingAddress.address_1"]').type(guest.address, { force: true })
-    cy.wait(500)
-    cy.scrollTo('bottom')
-    cy.wait(500)
-    cy.get('[name="shippingAddress.address_1"]').type(guest.address, { force: true })
-    cy.wait(500)
-    cy.get('[id="field-shippingAddress.city"]').type(guest.city, { force: true })
-    cy.wait(500)
-    cy.xpath("//button[@id='field-shippingAddress.country']").click({ force: true })
-    cy.wait(500)
-    cy.get('div.flex.flex-1.whitespace-nowrap').contains('United States').click({ force: true })
-    cy.wait(500)
-    cy.xpath("//button[@id='field-shippingAddress.province']").click({ force: true })
-    cy.wait(500)
-    cy.xpath("//div[position()=2]/div[position()=1]/div[position()=1]/div[position()=3]/div[position()=1]").click({ force: true })
-    cy.wait(500)
-    cy.get('[name="shippingAddress.postcode"]').type(guest.zipCode, { force: true })
-    cy.wait(1500)
-
-    cy.scrollTo('bottom')
+    // Fill shipping & complete COD checkout
+    const shippingData = buildShippingData()
+    CheckoutPage.fillShippingAddress(shippingData)
+    
+    CheckoutPage.selectShippingMethod(0)
     cy.wait(1000)
-    cy.get('[role="radio"], input[type="radio"]').eq(0).click({ force: true })
+    CheckoutPage.selectPaymentCOD()
     cy.wait(1000)
-    cy.scrollTo('bottom')
-    cy.wait(1000)
-    cy.get('form').find('div').contains('Cash On Delivery').click({ force: true })
-    cy.wait(1000)
-    cy.scrollTo('bottom')
-    cy.wait(1000)
-    cy.xpath('//div/div[4]/button').click({ force: true })
+    CheckoutPage.clickPlaceOrder()
     cy.wait(2000)
     
-    cy.contains('span', 'Checkout success').should('be.visible')
+    CheckoutSuccessPage.assertCheckoutSuccess()
   })
 
   it('TC-005.4: User checkout tanpa login barang dari Category page', () => {
-    cy.visit('https://demo.evershop.io/')
+    HomePage.open()
     cy.wait(500)
     
-    // category page finding has an overflow issue, so use force true
-    cy.get('a[href="/accessories"]').contains('View Collection').click({ force: true })
+    // Navigate to category page
+    HomePage.clickViewCollection('/accessories')
     cy.wait(1000)
-    cy.url().should('eq', 'https://demo.evershop.io/accessories')
+    CategoryPage.assertExactUrl('https://demo.evershop.io/accessories')
     
-    cy.contains('h3', 'Modern Ceramic Vase - White').scrollIntoView()
-    cy.wait(500)
-    cy.contains('h3', 'Modern Ceramic Vase - White').click({ force: true })
+    // ── Product 1: Modern Ceramic Vase - White ──
+    CategoryPage.clickProduct('Modern Ceramic Vase - White')
     cy.wait(1000)
-    cy.contains('button', 'White').click({ force: true })
-    cy.wait(500)
-    cy.get('[name="qty"]').clear({ force: true }).type('1', { force: true })
-    cy.wait(500)
-    cy.contains('button', 'ADD TO CART').click({ force: true })
+    ProductDetailPage.addProductAndContinueShopping('White', 1)
+    ProductDetailPage.addAnotherVariant(/(Yellow|Black|Green|Red)/, 1)
     cy.wait(1000)
-    cy.xpath("//div[@data-slot='sheet-overlay']", { timeout: 10000 }).click({ force: true })
-    cy.wait(1500)
-    cy.contains('button', /(Yellow|Black|Green|Red)/).click({ force: true })
-    cy.wait(500)
-    cy.get('[name="qty"]').clear({ force: true }).type('1', { force: true })
-    cy.wait(500)
-    cy.contains('button', 'ADD TO CART').click({ force: true })
-    cy.wait(1000)
-    cy.xpath("//div[@data-slot='sheet-overlay']", { timeout: 10000 }).click({ force: true })
+    ProductDetailPage.closeSidebar()
     cy.wait(1500)
     
-    cy.contains('a', 'Accessories').click({ force: true })
+    // Navigate back to category
+    CategoryPage.navigateToCategory('Accessories')
     cy.wait(1000)
-    cy.url().should('eq', 'https://demo.evershop.io/accessories')
+    CategoryPage.assertExactUrl('https://demo.evershop.io/accessories')
     
-    cy.contains('h3', 'Ceramic Coffee Cup - Yellow').scrollIntoView()
-    cy.wait(500)
-    cy.contains('h3', 'Ceramic Coffee Cup - Yellow').click({ force: true })
+    // ── Product 2: Ceramic Coffee Cup - Yellow ──
+    CategoryPage.clickProduct('Ceramic Coffee Cup - Yellow')
     cy.wait(1000)
-    cy.url().should('eq', 'https://demo.evershop.io/accessories/ceramic-coffee-cup-yellow')
-    cy.contains('button', 'White').click({ force: true })
-    cy.wait(500)
-    cy.get('[name="qty"]').clear({ force: true }).type('1', { force: true })
-    cy.wait(500)
-    cy.contains('button', 'ADD TO CART').click({ force: true })
-    cy.wait(1000)
-    cy.xpath("//div[@data-slot='sheet-overlay']", { timeout: 10000 }).click({ force: true })
-    cy.wait(1500)
-    cy.contains('button', /(Yellow|Black|Green|Red)/).click({ force: true })
-    cy.wait(500)
-    cy.get('[name="qty"]').clear({ force: true }).type('1', { force: true })
-    cy.wait(500)
-    cy.contains('button', 'ADD TO CART').click({ force: true })
+    CategoryPage.assertExactUrl('https://demo.evershop.io/accessories/ceramic-coffee-cup-yellow')
+    
+    ProductDetailPage.addProductAndContinueShopping('White', 1)
+    ProductDetailPage.addAnotherVariant(/(Yellow|Black|Green|Red)/, 1)
     cy.wait(1000)
     
-    cy.xpath("//button[normalize-space()='View Cart (4)']").click({ force: true })
+    // View cart with 4 items
+    CartSidebarComponent.viewCart(4)
     cy.wait(1000)
     
-    cy.contains('td', 'Ceramic Coffee Cup - White').parent('tr').should('exist')
-    cy.contains('td', 'Ceramic Coffee Cup - Black').parent('tr').should('exist')
-    cy.contains('td', 'Modern Ceramic Vase - White').parent('tr').should('exist')
-    cy.contains('td', 'Modern Ceramic Vase - Black').parent('tr').should('exist')
+    // Verify products in cart
+    CartPage.verifyProductInCart('Ceramic Coffee Cup - White')
+    CartPage.verifyProductInCart('Ceramic Coffee Cup - Black')
+    CartPage.verifyProductInCart('Modern Ceramic Vase - White')
+    CartPage.verifyProductInCart('Modern Ceramic Vase - Black')
     
-    for (let i = 0; i < 5; i++) {
-      cy.get('table tbody tr').eq(0).contains('+').click({ force: true })
-      cy.wait(500)
-      cy.get('table tbody tr').eq(1).contains('+').click({ force: true })
-      cy.wait(500)
-    }
+    // Adjust quantities
+    CartPage.adjustQuantity(0, 'increment', 5)
+    CartPage.adjustQuantity(1, 'increment', 5)
+    CartPage.adjustQuantity(0, 'decrement', 2)
+    CartPage.adjustQuantity(1, 'decrement', 2)
     
-    for (let i = 0; i < 2; i++) {
-      cy.get('table tbody tr').eq(0).contains('-').click({ force: true })
-      cy.wait(1000)
-      cy.get('table tbody tr').eq(1).contains('-').click({ force: true })
-      cy.wait(1000)
-    }
-
-    
-    cy.get('table tbody tr').eq(1).find('a').contains('Remove').click({ force: true })
+    // Remove one item
+    CartPage.removeItem(1)
     cy.wait(1000)
     
-    cy.get('button[type="button"][title="CHECKOUT"]').click({ force: true })
+    // Proceed to checkout from cart page
+    CartPage.clickCheckout()
     cy.wait(1000)
-    cy.url().should('include', '/checkout')
+    CheckoutPage.assertUrl('/checkout')
     
     cy.contains('Modern Ceramic Vase').should('be.visible')
     
-    const guest = generateRandomUser()
-    const fullName = `${guest.firstName} ${guest.lastName}`
-
-    cy.get('[name="contact.email"]').type(guest.email, { force: true })
-    cy.wait(500)
-    cy.get('[id="field-shippingAddress.full_name"]').scrollIntoView().type(fullName, { force: true })
-    cy.wait(500)
-    cy.xpath("//input[@id='field-shippingAddress.telephone']").type(guest.phone, { force: true })
-    cy.wait(500)
-    cy.get('[id="field-shippingAddress.address_1"]').type(guest.address, { force: true })
-    cy.wait(500)
-    cy.scrollTo('bottom')
-    cy.wait(500)
-    cy.get('[name="shippingAddress.address_1"]').type(guest.address, { force: true })
-    cy.wait(500)
-    cy.get('[id="field-shippingAddress.city"]').type(guest.city, { force: true })
-    cy.wait(500)
-    cy.xpath("//button[@id='field-shippingAddress.country']").click({ force: true })
-    cy.wait(500)
-    cy.get('div.flex.flex-1.whitespace-nowrap').contains('United States').click({ force: true })
-    cy.wait(500)
-    cy.xpath("//button[@id='field-shippingAddress.province']").click({ force: true })
-    cy.wait(500)
-    cy.xpath("//div[position()=2]/div[position()=1]/div[position()=1]/div[position()=3]/div[position()=1]").click({ force: true })
-    cy.wait(500)
-    cy.get('[name="shippingAddress.postcode"]').type(guest.zipCode, { force: true })
-    cy.wait(1500)
-
-    cy.scrollTo('bottom')
+    // Fill shipping & complete COD checkout
+    const shippingData = buildShippingData()
+    CheckoutPage.fillShippingAddress(shippingData)
+    
+    CheckoutPage.selectShippingMethod(0)
     cy.wait(1000)
-    cy.get('[role="radio"], input[type="radio"]').eq(0).click({ force: true })
+    CheckoutPage.selectPaymentCOD()
     cy.wait(1000)
-    cy.scrollTo('bottom')
-    cy.wait(1000)
-    cy.get('form').find('div').contains('Cash On Delivery').click({ force: true })
-    cy.wait(1000)
-    cy.scrollTo('bottom')
-    cy.wait(1000)
-    cy.xpath('//div/div[4]/button').click({ force: true })
+    CheckoutPage.clickPlaceOrder()
     cy.wait(2000)
     
-    cy.contains('span', 'Checkout success').should('be.visible')
+    CheckoutSuccessPage.assertCheckoutSuccess()
   })
 })

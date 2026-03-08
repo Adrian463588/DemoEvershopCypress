@@ -1,7 +1,20 @@
 {
   "testProduct": {
-    "name": "Premium Running Shoes",
-    "category": "Men shoes",
-    "sku": "RS-001"
+    "name": "Stainless Steel Thermos - Yellow",
+    "slug": "stainless-steel-thermos-yellow",
+    "category": "Accessories",
+    "variant": "White"
+  },
+  "secondProduct": {
+    "name": "Modern Ceramic Vase - Green",
+    "slug": "modern-ceramic-vase-green",
+    "category": "Accessories",
+    "variant": "White"
+  },
+  "thirdProduct": {
+    "name": "Ceramic Coffee Cup - Yellow",
+    "slug": "ceramic-coffee-cup-yellow",
+    "category": "Accessories",
+    "variant": "White"
   }
 }

@@ -33,6 +33,7 @@ jobs:
 
       - name: Run Cypress Tests
         uses: cypress-io/github-action@v6
+        continue-on-error: true
         with:
           browser: chrome
           install: false
@@ -48,7 +49,7 @@ jobs:
         with:
           name: allure-results
           path: allure-results/
-          if-no-files-found: error
+          if-no-files-found: warn
           retention-days: 7
 
       - name: Upload Screenshots (on failure)

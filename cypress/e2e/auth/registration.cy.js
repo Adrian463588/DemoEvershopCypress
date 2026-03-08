@@ -1,4 +1,8 @@
 import { generateRandomUser } from '../../support/helpers/data-generator'
+import HeaderComponent from '../../pages/HeaderComponent'
+import LoginPage from '../../pages/LoginPage'
+import RegisterPage from '../../pages/RegisterPage'
+import AccountPage from '../../pages/AccountPage'
 
 describe('Authentication - Registration', () => {
   beforeEach(() => {
@@ -12,47 +16,40 @@ describe('Authentication - Registration', () => {
     const fullName = `${newUser.firstName} ${newUser.lastName}`
     
     // Navigate to login page
-    cy.get('div.self-center > a > svg').click()
-    cy.url().should('include', '/account/login')
+    HeaderComponent.clickAccountIcon()
+    LoginPage.assertUrl('/account/login')
     
     // Navigate to create account
-    cy.xpath("//a[normalize-space()='Create an account']").click()
+    RegisterPage.navigateFromLogin()
     
     // Assert on registration page
-    cy.url().should('include', '/account/register')
-    cy.get('h1').contains('Create an account').should('be.visible')
+    RegisterPage.pageTitle.should('be.visible')
     
-    // Fill registration form
-    cy.get('#field-full_name').type(fullName)
-    cy.get('#field-email').type(newUser.email)
-    cy.get('#field-password').type(newUser.password)
-    
-    // Submit
-    cy.xpath("//button[@data-slot='button']").click()
+    // Fill registration form & submit
+    RegisterPage.register(fullName, newUser.email, newUser.password)
     
     // Assert redirect to home
-    cy.url().should('eq', Cypress.config().baseUrl + '/')
+    RegisterPage.assertExactUrl(Cypress.config().baseUrl + '/')
     
     // Assert logged in
-    cy.get('div.self-center > a > svg').click()
-    cy.get('h1').contains('My Account').should('be.visible')
-    cy.url().should('include', '/account')
+    HeaderComponent.clickAccountIcon()
+    AccountPage.assertOnAccountPage()
   })
 
   it('TC-002.2: should display validation errors on invalid registration', () => {
     // Navigate to registration page
-    cy.get('div.self-center > a > svg').click()
-    cy.xpath("//a[normalize-space()='Create an account']").click()
+    HeaderComponent.clickAccountIcon()
+    RegisterPage.navigateFromLogin()
     
     // Test invalid email error
-    cy.get('#field-email').type('invalid')
-    cy.xpath("//button[@data-slot='button']").click()
-    cy.xpath("//div[normalize-space()='Please enter a valid email address']").should('be.visible')
+    RegisterPage.fillEmail('invalid')
+    RegisterPage.clickCreateAccount()
+    RegisterPage.getValidationError('Please enter a valid email address').should('be.visible')
     
     // Test short password error
-    cy.get('#field-email').clear()
-    cy.get('#field-password').type('123')
-    cy.xpath("//button[@data-slot='button']").click()
-    cy.xpath("//div[normalize-space()='Password must be at least 6 characters long']").should('be.visible')
+    RegisterPage.emailField.clear()
+    RegisterPage.fillPassword('123')
+    RegisterPage.clickCreateAccount()
+    RegisterPage.getValidationError('Password must be at least 6 characters long').should('be.visible')
   })
 })
