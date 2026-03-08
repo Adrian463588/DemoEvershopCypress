@@ -28,12 +28,13 @@ jobs:
       - name: Install Dependencies
         run: npm ci
 
-      - name: Clean Previous Allure Results
-        run: rm -rf allure-results allure-report || true
+      - name: Clean Previous Results
+        run: rm -rf allure-results allure-report cypress/reports || true
 
       - name: Run Cypress Tests
         uses: cypress-io/github-action@v6
         continue-on-error: true
+        id: cypress
         with:
           browser: chrome
           install: false
@@ -52,9 +53,20 @@ jobs:
           if-no-files-found: warn
           retention-days: 7
 
+      - name: Upload Mochawesome Reports
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: mochawesome-reports
+          path: cypress/reports/
+          if-no-files-found: ignore
+          retention-days: 7
+
+      # ✅ FIX: `if: always()` karena `continue-on-error: true` membuat step selalu "success"
+      # Gunakan `steps.cypress.outcome` untuk cek hasil asli
       - name: Upload Screenshots (on failure)
         uses: actions/upload-artifact@v4
-        if: failure()
+        if: always() && steps.cypress.outcome == 'failure'
         with:
           name: cypress-screenshots
           path: cypress/screenshots/
@@ -84,9 +96,9 @@ jobs:
       - name: Checkout Repository
         uses: actions/checkout@v4
         with:
-          fetch-depth: 0   # ✅ FIX: ambil semua branch termasuk gh-pages
+          fetch-depth: 0
 
-      # ✅ FIX: Inisialisasi gh-pages jika belum ada (first run)
+      # Inisialisasi gh-pages jika belum ada (first run)
       - name: Initialize gh-pages branch (first run only)
         run: |
           if ! git ls-remote --heads origin gh-pages | grep -q "gh-pages"; then
@@ -120,16 +132,16 @@ jobs:
 
       - name: Download Allure Results
         uses: actions/download-artifact@v4
+        continue-on-error: true
         with:
           name: allure-results
           path: allure-results/
 
-      # ✅ FIX: Debug — pastikan allure-results tidak kosong
       - name: Verify Allure Results exist
         run: |
           echo "=== Isi allure-results/ ==="
           ls -la allure-results/ || echo "KOSONG atau tidak ada!"
-          echo "Total files: $(find allure-results -type f | wc -l)"
+          echo "Total files: $(find allure-results -type f 2>/dev/null | wc -l)"
 
       - name: Generate Allure Report with History
         uses: simple-elf/allure-report-action@master
@@ -142,12 +154,11 @@ jobs:
           allure_history: allure-history
           keep_reports: 20
 
-      # ✅ FIX: Debug — pastikan allure-history ter-generate
       - name: Verify Allure History generated
         run: |
           echo "=== Isi allure-history/ ==="
           ls -la allure-history/ || echo "KOSONG atau tidak ada!"
-          echo "Total files: $(find allure-history -type f | wc -l)"
+          echo "Total files: $(find allure-history -type f 2>/dev/null | wc -l)"
 
       - name: Upload Allure HTML Report (Artifact)
         uses: actions/upload-artifact@v4

@@ -25,7 +25,7 @@ jobs:
       # Ambil history laporan sebelumnya untuk grafik trend
       - name: Get Allure History from gh-pages
         uses: actions/checkout@v4
-        continue-on-error: true   # tidak error jika gh-pages belum ada
+        continue-on-error: true
         with:
           ref: gh-pages
           path: gh-pages
@@ -39,45 +39,50 @@ jobs:
       - name: Install Dependencies
         run: npm ci
 
-      # ✅ FIX: Install Allure CLI dihapus — sudah bundled di allure-report-action
-
-      # ✅ FIX: Bersihkan sisa hasil run sebelumnya
-      - name: Clean Previous Allure Results
-        run: rm -rf allure-results allure-report || true
+      - name: Clean Previous Results
+        run: rm -rf allure-results allure-report cypress/reports || true
 
       - name: Run Full Cypress Suite
         uses: cypress-io/github-action@v6
         continue-on-error: true
+        id: cypress
         with:
           browser: chrome
           install: false
         env:
-          # ✅ FIX: URL plain tanpa markdown link format
           CYPRESS_BASE_URL: https://demo.evershop.io
           CYPRESS_USERNAME: ${{ secrets.CYPRESS_USERNAME }}
           CYPRESS_PASSWORD: ${{ secrets.CYPRESS_PASSWORD }}
 
-      # ✅ FIX: Upload hasil mentah allure sebelum generate (backup & debug)
+      # Upload raw allure results sebagai backup & debugging
       - name: Upload Allure Results (Raw)
         uses: actions/upload-artifact@v4
         if: always()
         with:
           name: nightly-allure-results-${{ github.run_number }}
           path: allure-results/
-          if-no-files-found: error
+          if-no-files-found: warn
           retention-days: 7
 
-      # ✅ FIX: Tambah upload screenshots untuk debugging saat failure
+      - name: Upload Mochawesome Reports
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: nightly-mochawesome-${{ github.run_number }}
+          path: cypress/reports/
+          if-no-files-found: ignore
+          retention-days: 7
+
+      # ✅ FIX: Gunakan steps.cypress.outcome karena continue-on-error membuat step selalu "success"
       - name: Upload Screenshots (on failure)
         uses: actions/upload-artifact@v4
-        if: failure()
+        if: always() && steps.cypress.outcome == 'failure'
         with:
           name: nightly-screenshots-${{ github.run_number }}
           path: cypress/screenshots/
           if-no-files-found: ignore
           retention-days: 7
 
-      # ✅ FIX: Tambah upload videos
       - name: Upload Videos
         uses: actions/upload-artifact@v4
         if: always()
