@@ -18,21 +18,22 @@ export class CartPage extends BasePage {
   }
 
   increaseQuantity(itemIndex = 0) {
-    // Attempting generic clicks
-    cy.get('a[href="#"]').contains('+').eq(itemIndex).click({ force: true });
+    cy.contains('button', '+').eq(itemIndex).click({ force: true });
+    cy.wait(1000);
   }
 
   decreaseQuantity(itemIndex = 0) {
-    cy.get('a[href="#"]').contains('-').eq(itemIndex).click({ force: true });
+    cy.contains('button', '−').eq(itemIndex).click({ force: true }); // Special minus character used in Evershop DOM
+    cy.wait(1000);
   }
 
   removeItem(itemIndex = 0) {
-    // We can rely on the typical layout for removing items in Evershop, often an SVG icon
-    this.getElement(this.selectors.removeBtn).eq(itemIndex).click({ force: true });
+    cy.get('table tbody tr').eq(itemIndex).find('a').contains('Remove').click({ force: true });
+    cy.wait(1000);
   }
 
   proceedToCheckout() {
-    this.getElement(this.selectors.checkoutBtn).click({ force: true });
+    cy.get('button[type="button"][title="CHECKOUT"], a[href="/checkout"]').first().click({ force: true });
   }
 
   // ── Assertions ──────────────────────────────────────────

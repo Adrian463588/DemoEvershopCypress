@@ -28,6 +28,8 @@ export class CheckoutPage extends BasePage {
     this.getElement(this.selectors.fullNameInput).first().scrollIntoView().type(fullName, { force: true });
     cy.xpath(this.selectors.telephoneInput).type(user.phone, { force: true });
     this.getElement(this.selectors.address1Input).first().type(user.address, { force: true });
+    cy.scrollTo('bottom');
+    cy.get('[name="shippingAddress.address_1"]').type(user.address, { force: true });
     this.getElement(this.selectors.cityInput).type(user.city, { force: true });
 
     // Assuming US

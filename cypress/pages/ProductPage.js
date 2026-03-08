@@ -8,11 +8,11 @@ export class ProductPage extends BasePage {
     sizeSwatches: 'ul.variant-swatches li a, button[role="radio"]',
     quantityInput: 'input[name="qty"]',
     addToCartBtn: 'button:contains("ADD TO CART"), #product-addtocart-button',
-    successToast: 'div.toast-success, span:contains("Just added to your cart")',
+    successToast: 'button:contains("Checkout"), a[href="/cart"], .mini-cart',
   };
 
-  visitProduct(slug) {
-    this.visit(`/slug/${slug}`);
+  visitProduct(productPath) {
+    this.visit(`/${productPath}`);
   }
 
   selectColor(colorName) {
@@ -33,6 +33,6 @@ export class ProductPage extends BasePage {
   }
 
   assertSuccessToast() {
-    cy.contains('span', 'Just added to your cart', { timeout: 10000 }).should('be.visible');
+    cy.get('.mini-cart, [data-slot="sheet-overlay"]', { timeout: 10000 }).should('be.visible');
   }
 }

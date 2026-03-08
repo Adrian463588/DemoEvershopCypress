@@ -7,7 +7,8 @@ const checkoutPage = new CheckoutPage();
 
 Given('User berada di halaman checkout', () => {
   // Precondition: add item to cart first
-  cy.visit('/slug/nike-react-phantom-run-flyknit-2-124');
+  cy.visit('/accessories/stainless-steel-thermos-yellow');
+  cy.contains('button', 'White').click({ force: true });
   cy.get('input[name="qty"]').clear().type('1');
   cy.contains('button', 'ADD TO CART').click({ force: true });
   cy.wait(2000);
@@ -19,7 +20,7 @@ When('User tidak mengisi required field', () => {
 });
 
 When('User mencoba submit form', () => {
-  cy.contains('button', 'Continue to Delivery').click({ force: true });
+  cy.xpath('//div/div[4]/button').last().click({ force: true });
   cy.wait(500);
 });
 

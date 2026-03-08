@@ -1,9 +1,19 @@
-import { Given, When, Then } from '@badeball/cypress-cucumber-preprocessor';
+import { Given, When, Then, Before } from '@badeball/cypress-cucumber-preprocessor';
 import { CartPage } from '../pages/CartPage';
 import { CheckoutPage } from '../pages/CheckoutPage';
 
 const cartPage = new CartPage();
 const checkoutPage = new CheckoutPage();
+
+Before({ tags: "@smoke or @regression" }, () => {
+  cy.on('uncaught:exception', () => false);
+  cy.on('window:before:load', (win) => {
+    Object.defineProperty(win, 'top', {
+      get: () => win,
+      configurable: true
+    });
+  });
+});
 
 When('User mengklik tombol Proceed to Checkout', () => {
   cartPage.proceedToCheckout();

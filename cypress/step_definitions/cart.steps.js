@@ -6,8 +6,7 @@ const productPage = new ProductPage();
 const cartPage = new CartPage();
 
 Given('User berada di halaman product detail', () => {
-  // Let's use a known product slug
-  productPage.visitProduct('nike-react-phantom-run-flyknit-2-124');
+  productPage.visitProduct('accessories/stainless-steel-thermos-yellow');
 });
 
 When('User memilih varian produk jika tersedia', () => {
@@ -42,7 +41,8 @@ Then('Product tersimpan di cart dengan detail yang benar', () => {
 });
 
 Given('User memiliki minimal 1 produk di cart', () => {
-  productPage.visitProduct('nike-react-phantom-run-flyknit-2-124');
+  productPage.visitProduct('accessories/stainless-steel-thermos-yellow');
+  productPage.selectColor('White');
   productPage.setQuantity(1);
   productPage.addToCart();
   cy.wait(2000);

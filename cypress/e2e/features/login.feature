@@ -10,7 +10,7 @@ Feature: User Authentication
   @happy-path
   Scenario: Login dengan kredensial valid
     Given User berada di halaman login
-    When User memasukkan email "test@evershop.io"
+    When User memasukkan email "newuser@gmail.com"
     And User memasukkan password yang valid
     And User mengklik tombol Login
     Then User diarahkan ke halaman dashboard

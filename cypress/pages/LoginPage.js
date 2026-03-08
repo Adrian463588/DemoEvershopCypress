@@ -3,11 +3,11 @@ import { BasePage } from './BasePage';
 export class LoginPage extends BasePage {
   // ── Selectors ───────────────────────────────────────────
   selectors = {
-    emailInput:      '[name="email"], [data-testid="email-input"]',
-    passwordInput:   '[name="password"], [data-testid="password-input"]',
-    submitButton:    '[type="submit"], [data-testid="login-btn"]',
-    errorMessage:    '[data-testid="error-msg"], .error-message, .text-critical',
-    userNameHeader:  '[data-testid="user-name"], .header-user-name, a[href="/account"]',
+    emailInput:      '#field-email, [name="email"]',
+    passwordInput:   '#field-password, [name="password"]',
+    submitButton:    'button[type="submit"], button:contains("SIGN IN")',
+    errorMessage:    '.Toastify__toast-body, [data-slot="field-error"]',
+    userNameHeader:  'h1:contains("My Account"), a[href="/account"]',
   };
 
   // ── Actions ─────────────────────────────────────────────
@@ -28,7 +28,7 @@ export class LoginPage extends BasePage {
   }
 
   submit() {
-    this.getElement(this.selectors.submitButton).click();
+    cy.contains('SIGN IN', { matchCase: false }).click({ force: true });
   }
 
   login(email, password) {
@@ -41,11 +41,11 @@ export class LoginPage extends BasePage {
   // ── Assertions ──────────────────────────────────────────
   assertLoginSuccess() {
     cy.url().should('include', '/account');
-    this.getElement(this.selectors.userNameHeader).should('be.visible');
+    cy.contains('h1', 'My Account').should('be.visible');
   }
 
   assertUserNameVisible() {
-    this.getElement(this.selectors.userNameHeader).should('be.visible');
+    cy.contains('h1', 'My Account').should('be.visible');
   }
 
   assertLoginFailed() {

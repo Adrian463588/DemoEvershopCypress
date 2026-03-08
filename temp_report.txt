@@ -1,0 +1,48 @@
+TEST: Cart Management Menambahkan produk ke cart
+ERROR: AssertionError: Timed out retrying after 10000ms: Expected to find element: `#mui-5`, but never found it.
+
+TEST: Cart Management Update quantity di cart
+ERROR: AssertionError: Timed out retrying after 4000ms: Expected to find element: `[data-testid="qty-input"], input[name="qty"]`, but never found it.
+
+TEST: Cart Management Menghapus produk dari cart
+ERROR: AssertionError: Timed out retrying after 4000ms: Expected to find content: 'tr' but never did.
+
+TEST: Guest Checkout Flow Guest checkout end-to-end
+ERROR: AssertionError: Timed out retrying after 4000ms: Expected to find element: `button[type="button"][title="CHECKOUT"], a[href="/checkout"]`, but never found it.
+
+TEST: Form Validation Submit form dengan required field kosong
+ERROR: AssertionError: Timed out retrying after 4000ms: Expected to find content: 'Required' but never did.
+
+TEST: Form Validation Submit dengan format email tidak valid
+ERROR: AssertionError: Timed out retrying after 4000ms: Expected to find element: `button[type="submit"], button:contains("CONTINUE"), button:contains("PAYMENT")`, but never found it.
+
+TEST: Form Validation Password tidak cocok saat registrasi
+ERROR: AssertionError: Timed out retrying after 4000ms: Expected to find element: `button[type="submit"], button:contains("CONTINUE"), button:contains("PAYMENT")`, but never found it.
+
+TEST: User Authentication Login dengan kredensial valid
+ERROR: AssertionError: Timed out retrying after 4000ms: Expected to find element: `button[type="submit"], button:contains("SIGN IN")`, but never found it.
+
+TEST: User Authentication Login dengan password salah
+ERROR: AssertionError: Timed out retrying after 4000ms: Expected to find element: `button[type="submit"], button:contains("SIGN IN")`, but never found it.
+
+TEST: User Authentication Login dengan data tidak valid (example #1)
+ERROR: AssertionError: Timed out retrying after 4000ms: Expected to find element: `button[type="submit"], button:contains("SIGN IN")`, but never found it.
+
+TEST: User Authentication Login dengan data tidak valid (example #2)
+ERROR: AssertionError: Timed out retrying after 4000ms: Expected to find element: `button[type="submit"], button:contains("SIGN IN")`, but never found it.
+
+TEST: User Authentication Login dengan data tidak valid (example #3)
+ERROR: AssertionError: Timed out retrying after 4000ms: Expected to find element: `button[type="submit"], button:contains("SIGN IN")`, but never found it.
+
+TEST: Product Search Search dengan berbagai keyword (example #1)
+ERROR: CypressError: `cy.click()` can only be called on a single element. Your subject contained 2 elements. Pass `{ multiple: true }` if you want to serially click each element.
+
+TEST: Product Search Search dengan berbagai keyword (example #2)
+ERROR: CypressError: `cy.click()` can only be called on a single element. Your subject contained 2 elements. Pass `{ multiple: true }` if you want to serially click each element.
+
+TEST: Product Search Search dengan berbagai keyword (example #3)
+ERROR: CypressError: `cy.click()` can only be called on a single element. Your subject contained 2 elements. Pass `{ multiple: true }` if you want to serially click each element.
+
+TEST: Product Search Search dengan keyword tidak valid
+ERROR: CypressError: `cy.click()` can only be called on a single element. Your subject contained 2 elements. Pass `{ multiple: true }` if you want to serially click each element.
+

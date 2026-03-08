@@ -2,9 +2,9 @@ import { BasePage } from './BasePage';
 
 export class HomePage extends BasePage {
   selectors = {
-    searchIcon: 'a.search-icon',
-    searchInput: 'input[placeholder="Search"]',
-    productTitles: 'h3, .product-name', // Dynamic selector since Evershop frequently changes classes
+    searchIcon: 'a.search__icon > svg > circle, a.search__icon',
+    searchInput: '[placeholder="Search"]',
+    productTitles: 'h3',
   };
 
   navigateTo() {
@@ -12,10 +12,10 @@ export class HomePage extends BasePage {
   }
 
   clickSearchIcon() {
-    this.getElement(this.selectors.searchIcon).click({ force: true });
+    this.getElement(this.selectors.searchIcon).first().click({ force: true });
   }
 
-  searchFor(keyword) {
+  searchProduct(keyword) {
     this.clickSearchIcon();
     this.getElement(this.selectors.searchInput).clear().type(`${keyword}{enter}`, { force: true });
   }
