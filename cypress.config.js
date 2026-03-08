@@ -6,6 +6,7 @@ module.exports = defineConfig({
   projectId: '9qg512',
   e2e: {
     baseUrl: 'https://demo.evershop.io',
+    chromeWebSecurity: false,
     env: {
       apiUrl: 'https://demo.evershop.io/api'
     },
@@ -22,15 +23,11 @@ module.exports = defineConfig({
       return config;
     },
   },
-  reporter: 'cypress-multi-reporters',
+  reporter: 'mochawesome',
   reporterOptions: {
-    reporterEnabled: 'mochawesome',
-    mochawesomeReporterOptions: {
-      reportDir: 'cypress/reports',
-      quiet: true,
-      overwrite: false,
-      html: true,
-      json: true
-    }
+    reportDir: 'cypress/reports',
+    overwrite: false,
+    html: true,
+    json: true
   }
 });
