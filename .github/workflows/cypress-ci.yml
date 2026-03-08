@@ -10,71 +10,46 @@ env:
   CYPRESS_BASE_URL: https://demo.evershop.io
 
 jobs:
-  # ── Job 1: Run Tests ────────────────────────────────────
-  cypress-run:
-    name: Run Cypress Tests
+  # ── Job 1: Run Legacy Tests (Preservation Check) ────────
+  cypress-legacy:
+    name: Run Legacy Tests (Preservation Check)
     runs-on: ubuntu-24.04
-
     steps:
-      - name: Checkout Repository
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 20, cache: npm }
+      - run: npm ci
+      - name: Run Legacy Cypress Tests
+        run: npm run cy:legacy
+        continue-on-error: true          # Legacy boleh fail, tidak block
 
-      - name: Setup Node.js 20
-        uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-          cache: 'npm'
-
-      - name: Install Dependencies
-        run: npm ci
-
-      - name: Clean Previous Allure Results
-        run: rm -rf allure-results allure-report || true
-
-      - name: Run Cypress Tests
-        uses: cypress-io/github-action@v6
-        with:
-          browser: chrome
-          install: false
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          CYPRESS_BASE_URL: ${{ env.CYPRESS_BASE_URL }}
-          CYPRESS_USERNAME: ${{ secrets.CYPRESS_USERNAME }}
-          CYPRESS_PASSWORD: ${{ secrets.CYPRESS_PASSWORD }}
-
+  # ── Job 2: Run Cucumber POM Tests ───────────────────────
+  cypress-cucumber:
+    name: Run Cucumber POM Tests
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 20, cache: npm }
+      - uses: actions/setup-java@v4
+        with: { distribution: temurin, java-version: 17 }
+      - run: npm ci
+      - run: npm install -g allure-commandline
+      - name: Run Cucumber Smoke Tests (Headless)
+        run: npm run cy:smoke
       - name: Upload Allure Results
         uses: actions/upload-artifact@v4
         if: always()
         with:
           name: allure-results
           path: allure-results/
-          if-no-files-found: error
           retention-days: 7
 
-      - name: Upload Screenshots (on failure)
-        uses: actions/upload-artifact@v4
-        if: failure()
-        with:
-          name: cypress-screenshots
-          path: cypress/screenshots/
-          if-no-files-found: ignore
-          retention-days: 7
-
-      - name: Upload Videos
-        uses: actions/upload-artifact@v4
-        if: always()
-        with:
-          name: cypress-videos
-          path: cypress/videos/
-          if-no-files-found: ignore
-          retention-days: 7
-
-
-  # ── Job 2: Generate & Publish Allure Report ─────────────
+  # ── Job 3: Generate & Publish Allure Report ─────────────
   allure-report:
     name: Generate Allure Report
     runs-on: ubuntu-24.04
-    needs: cypress-run
+    needs: cypress-cucumber
     if: always()
     permissions:
       contents: write

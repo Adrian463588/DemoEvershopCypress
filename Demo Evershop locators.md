@@ -352,16 +352,224 @@ assert terdapat order sebelumnya cy.xpath('//div\[normalize-space()='Stainless S
 assert order id di profile page misal cy.xpath('//span\[normalize-space()='Order: \#10893'\]').
 
 # Flow search product
-===================
 
- When user in [https://demo.evershop.io/](https://demo.evershop.io/)
+ When user in [https://demo.evershop.io/](https://demo.evershop.io/)  
+lalu klik pada cy.get('a.search\_\_icon \> svg \> circle')  
+klik pada field cy.get('\[placeholder="Search"\]')  
+lalu cari Stainless Steel Thermos  
+klik enter keyboard  
+assert terdapat cy.get('h3:has-text("Stainless Steel Thermos \- Yellow")') 
 
-lalu klik pada cy.get('a.search\_\_icon > svg > circle')
+# Flow Checkout menggunakan credit card
 
-klik pada field cy.get('\[placeholder="Search"\]')
+## User checkout menggunakan credit card dengan data valid
 
-lalu cari Stainless Steel Thermos
+user ke [https://demo.evershop.io/](https://demo.evershop.io/)  
+scroll sampai ketemu element cy.get('h3:has-text("Stainless Steel Thermos \- Yellow")')  
+click element cy.get('h3:has-text("Stainless Steel Thermos \- Yellow")')   
+Assert berpindah ke page [https://demo.evershop.io/accessories/stainless-steel-thermos-yellow](https://demo.evershop.io/accessories/stainless-steel-thermos-yellow)   
+pilih variant click cy.get('button:has-text("White")')   
+nambah quantity isi cy.get('\[name="qty"\]') dengan 1  
+klik cy.get('button:has-text("ADD TO CART")')   
+assert side bar terbuka cy.get('\#mui-5')   
+klik co cy.xpath('//button\[normalize-space()='Checkout'\]')   
+assert user berpindah ke co page  [https://demo.evershop.io/checkout](https://demo.evershop.io/checkout)   
+isi filed email cy.get('\[name="contact.email"\]')   
+scroll dan isi field cy.get('\[id="field-shippingAddress.full\_name"\]')   
+isi field cy.xpath('//input\[@id='field-shippingAddress.telephone'\]')  
+isi field cy.get('\[id="field-shippingAddress.address\_1"\]')  
+scroll page  
+isi field cy.get('\[name="shippingAddress.address\_1"\]')  
+isi field cy.get('\[id="field-shippingAddress.city"\]')  
+isi dropdown field klik cy.xpath('//button\[@id='field-shippingAddress.country'\]') , pilih cy.get('div.flex.flex-1.whitespace-nowrap').contains('United States').click();  
+isi dropdown field click cy.xpath('//button\[@id='field-shippingAddress.province'\]'), pilih dropdown cy.xpath('//div\[position()=2\]/div\[position()=1\]/div\[position()=1\]/div\[position()=3\]/div\[position()=1\]')   
+isi filed cy.get('\[name="shippingAddress.postcode"\]')   
+pilih shipping radio button cy.xpath('//span\[@id='base-ui-8'\]')  
+pilih add payment address radio button cy.xpath('//span\[@id='base-ui-10'\]')  
+pilih payment method radio button cy.xpath('//span\[@id='base-ui-15'\]')  
+klik pada credit card   
+// Memastikan iframe sudah ter-load sepenuhnya  
+cy.frameLoaded('iframe\[title="Secure payment input frame"\]');
 
-klik enter keyboard
+// Mencari elemen dan mengkliknya  
+cy.iframe('iframe\[title="Secure payment input frame"\]')  
+  .find('\[data-testid="card"\]')  
+  .click();
 
-assert terdapat cy.get('h3:has-text("Stainless Steel Thermos - Yellow")')
+isi nomor kartu pada field   
+// Memastikan iframe sudah siap  
+cy.frameLoaded('iframe\[title="Secure payment input frame"\]');
+
+// Mencari field input nomor kartu dan mengetik angka  
+cy.iframe('iframe\[title="Secure payment input frame"\]')  
+  .find('\#payment-numberInput')  
+  .type('4242424242424242'); // 4242... adalah standar nomor kartu testing (berhasil) dari Stripe
+
+isi expiration date 
+
+// Mengetik Expiry Date (Format biasanya MM/YY) cy.iframe('iframe\[title="Secure payment input frame"\]') .find('\#payment-expiryInput') .type('04/26');
+
+isi field cvc 
+
+const cvcNode \= $iframeBody\[0\].ownerDocument.evaluate( "//input\[@id='payment-cvcInput'\]", $iframeBody\[0\], null, XPathResult.FIRST\_ORDERED\_NODE\_TYPE, null ).singleNodeValue; cy.wrap(cvcNode).type('242');
+
+pilih dropdown united states
+
+cy.get('iframe\[title="Secure payment input frame"\]')  
+  .its('0.contentDocument.body')  
+  .should('not.be.empty')  
+  .then(($iframeBody) \=\> {  
+      
+    // 1\. Definisikan locator XPath untuk Country  
+    const countryXPath \= "//select\[@id='payment-countryInput'\]";  
+      
+    // 2\. Cari elemen menggunakan document.evaluate di dalam iframe  
+    const countryNode \= $iframeBody\[0\].ownerDocument.evaluate(  
+      countryXPath,   
+      $iframeBody\[0\],   
+      null,   
+      XPathResult.FIRST\_ORDERED\_NODE\_TYPE,   
+      null  
+    ).singleNodeValue;
+
+    // 3\. Bungkus elemennya dan pilih negara (Contoh: memilih 'Indonesia' menggunakan value 'ID')  
+    cy.wrap(countryNode).select('ID');   
+      
+    // Opsional: Jika ingin memilih menggunakan nama negaranya langsung:  
+    // cy.wrap(countryNode).select('United States');  
+  });
+
+isi field zip code 12345 
+
+cy.get('iframe\[title="Secure payment input frame"\]')  
+  .its('0.contentDocument.body')  
+  .should('not.be.empty')  
+  .then(($iframeBody) \=\> {  
+      
+    // 1\. Definisikan locator XPath untuk ZIP Code  
+    const zipCodeXPath \= "//input\[@id='payment-postalCodeInput'\]";  
+      
+    // 2\. Cari elemen menggunakan document.evaluate di dalam iframe  
+    const zipCodeNode \= $iframeBody\[0\].ownerDocument.evaluate(  
+      zipCodeXPath,   
+      $iframeBody\[0\],   
+      null,   
+      XPathResult.FIRST\_ORDERED\_NODE\_TYPE,   
+      null  
+    ).singleNodeValue;
+
+    // 3\. Bungkus elemennya dan ketik ZIP code / Kode Pos  
+    cy.wrap(zipCodeNode).type('12345');   
+  });
+
+klik button bayar dengan stripe cy.xpath('//div/div\[4\]/button')   
+assert berpindah halaman dengan terdapat cy.get('span:has-text("Checkout success")')  
+scroll page klik cy.get('button\[type="button"\]\[title="CONTINUE SHOPPING"\]') 
+
+## User checkout menggunakan credit card dengan dataTIDAK valid
+
+user ke [https://demo.evershop.io/](https://demo.evershop.io/)  
+scroll sampai ketemu element cy.get('h3:has-text("Stainless Steel Thermos \- Yellow")')  
+click element cy.get('h3:has-text("Stainless Steel Thermos \- Yellow")')   
+Assert berpindah ke page [https://demo.evershop.io/accessories/stainless-steel-thermos-yellow](https://demo.evershop.io/accessories/stainless-steel-thermos-yellow)   
+pilih variant click cy.get('button:has-text("White")')   
+nambah quantity isi cy.get('\[name="qty"\]') dengan 1  
+klik cy.get('button:has-text("ADD TO CART")')   
+assert side bar terbuka cy.get('\#mui-5')   
+klik co cy.xpath('//button\[normalize-space()='Checkout'\]')   
+assert user berpindah ke co page  [https://demo.evershop.io/checkout](https://demo.evershop.io/checkout)   
+isi filed email cy.get('\[name="contact.email"\]')   
+scroll dan isi field cy.get('\[id="field-shippingAddress.full\_name"\]')   
+isi field cy.xpath('//input\[@id='field-shippingAddress.telephone'\]')  
+isi field cy.get('\[id="field-shippingAddress.address\_1"\]')  
+scroll page  
+isi field cy.get('\[name="shippingAddress.address\_1"\]')  
+isi field cy.get('\[id="field-shippingAddress.city"\]')  
+isi dropdown field klik cy.xpath('//button\[@id='field-shippingAddress.country'\]') , pilih cy.get('div.flex.flex-1.whitespace-nowrap').contains('United States').click();  
+isi dropdown field click cy.xpath('//button\[@id='field-shippingAddress.province'\]'), pilih dropdown cy.xpath('//div\[position()=2\]/div\[position()=1\]/div\[position()=1\]/div\[position()=3\]/div\[position()=1\]')   
+isi filed cy.get('\[name="shippingAddress.postcode"\]')   
+pilih shipping radio button cy.xpath('//span\[@id='base-ui-8'\]')  
+pilih add payment address radio button cy.xpath('//span\[@id='base-ui-10'\]')  
+pilih payment method radio button cy.xpath('//span\[@id='base-ui-15'\]')  
+klik pada credit card   
+// Memastikan iframe sudah ter-load sepenuhnya  
+cy.frameLoaded('iframe\[title="Secure payment input frame"\]');
+
+// Mencari elemen dan mengkliknya  
+cy.iframe('iframe\[title="Secure payment input frame"\]')  
+  .find('\[data-testid="card"\]')  
+  .click();
+
+isi nomor kartu pada field   
+// Memastikan iframe sudah siap  
+cy.frameLoaded('iframe\[title="Secure payment input frame"\]');
+
+// Mencari field input nomor kartu dan mengetik angka  
+cy.iframe('iframe\[title="Secure payment input frame"\]')  
+  .find('\#payment-numberInput')  
+  .type('4000000000009995');
+
+isi expiration date 
+
+// Mengetik Expiry Date (Format biasanya MM/YY) cy.iframe('iframe\[title="Secure payment input frame"\]') .find('\#payment-expiryInput') .type('04/26');
+
+isi field cvc 
+
+const cvcNode \= $iframeBody\[0\].ownerDocument.evaluate( "//input\[@id='payment-cvcInput'\]", $iframeBody\[0\], null, XPathResult.FIRST\_ORDERED\_NODE\_TYPE, null ).singleNodeValue; cy.wrap(cvcNode).type('242');
+
+pilih dropdown united states
+
+cy.get('iframe\[title="Secure payment input frame"\]')  
+  .its('0.contentDocument.body')  
+  .should('not.be.empty')  
+  .then(($iframeBody) \=\> {  
+      
+    // 1\. Definisikan locator XPath untuk Country  
+    const countryXPath \= "//select\[@id='payment-countryInput'\]";  
+      
+    // 2\. Cari elemen menggunakan document.evaluate di dalam iframe  
+    const countryNode \= $iframeBody\[0\].ownerDocument.evaluate(  
+      countryXPath,   
+      $iframeBody\[0\],   
+      null,   
+      XPathResult.FIRST\_ORDERED\_NODE\_TYPE,   
+      null  
+    ).singleNodeValue;
+
+    // 3\. Bungkus elemennya dan pilih negara (Contoh: memilih 'Indonesia' menggunakan value 'ID')  
+    cy.wrap(countryNode).select('ID');   
+      
+    // Opsional: Jika ingin memilih menggunakan nama negaranya langsung:  
+    // cy.wrap(countryNode).select('United States');  
+  });
+
+isi field zip code 12345 
+
+cy.get('iframe\[title="Secure payment input frame"\]')  
+  .its('0.contentDocument.body')  
+  .should('not.be.empty')  
+  .then(($iframeBody) \=\> {  
+      
+    // 1\. Definisikan locator XPath untuk ZIP Code  
+    const zipCodeXPath \= "//input\[@id='payment-postalCodeInput'\]";  
+      
+    // 2\. Cari elemen menggunakan document.evaluate di dalam iframe  
+    const zipCodeNode \= $iframeBody\[0\].ownerDocument.evaluate(  
+      zipCodeXPath,   
+      $iframeBody\[0\],   
+      null,   
+      XPathResult.FIRST\_ORDERED\_NODE\_TYPE,   
+      null  
+    ).singleNodeValue;
+
+    // 3\. Bungkus elemennya dan ketik ZIP code / Kode Pos  
+    cy.wrap(zipCodeNode).type('12345');   
+  });
+
+klik button bayar dengan stripe cy.xpath('//div/div[4]/button') 
+assert berpindah halaman https://demo.evershop.io/cart
+assert error toast cy.xpath("//div[@role='alert' and text()='Payment failed']") .should('be.visible');
+
+
+Untuk cod radio button checkout \= cy.get('\#base-ui-13')   
+Untuk credit card checkout \= cy.get('\#base-ui-15')

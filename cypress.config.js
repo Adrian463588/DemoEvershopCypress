@@ -1,16 +1,28 @@
 const { defineConfig } = require("cypress");
 const { allureCypress } = require("allure-cypress/reporter");
 const os = require("os");
+const createBundler = require("@bahmutov/cypress-esbuild-preprocessor");
+const { addCucumberPreprocessorPlugin } = require("@badeball/cypress-cucumber-preprocessor");
+const { createEsbuildPlugin } = require("@badeball/cypress-cucumber-preprocessor/esbuild");
 
 module.exports = defineConfig({
   projectId: '9qg512',
   e2e: {
     baseUrl: 'https://demo.evershop.io',
     chromeWebSecurity: false,
+    specPattern: 'cypress/e2e/features/**/*.feature',
     env: {
-      apiUrl: 'https://demo.evershop.io/api'
+      apiUrl: 'https://demo.evershop.io/api',
+      tags: process.env.CYPRESS_TAGS || '',
+      allure: true
     },
-    setupNodeEvents(on, config) {
+    async setupNodeEvents(on, config) {
+      await addCucumberPreprocessorPlugin(on, config);
+      on('file:preprocessor',
+        createBundler({
+          plugins: [createEsbuildPlugin(config)],
+        })
+      );
       allureCypress(on, config, {
         resultsDir: "allure-results",
         environmentInfo: {

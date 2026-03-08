@@ -1,0 +1,17 @@
+#!/bin/sh
+. "$(dirname "$0")/_/husky.sh"
+
+echo "🚀 Running headless Cypress tests before push..."
+
+npm run test:headless
+
+EXIT_CODE=$?
+
+if [ $EXIT_CODE -ne 0 ]; then
+  echo "❌ Cypress tests failed. Push dibatalkan."
+  echo "   Jalankan: npm run cy:open untuk debug"
+  exit 1
+fi
+
+echo "✅ Semua tests passed. Melanjutkan push..."
+exit 0
