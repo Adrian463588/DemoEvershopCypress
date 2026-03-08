@@ -7,6 +7,9 @@ pipeline {
         ALLURE_REPORT_DIR  = 'allure-report'
         DISCORD_WEBHOOK    = credentials('discord-webhook')
         TERM               = 'xterm'
+
+        // Gunakan allure dari node_modules, bukan dari Jenkins Tool (Maven)
+        ALLURE_BIN         = './node_modules/.bin/allure'
     }
 
     options {
@@ -42,7 +45,12 @@ pipeline {
                     npm --version
                 '''
                 echo "\033[34m[INFO]\033[0m 📥 Running npm ci..."
+                // npm ci akan install allure-commandline dari npm registry (bukan Maven)
                 sh 'npm ci'
+                sh '''
+                    echo "\033[34m[INFO]\033[0m 🔍 Verifying allure binary..."
+                    ./node_modules/.bin/allure --version
+                '''
                 echo "\033[32m[SUCCESS]\033[0m ✅ Dependencies installed"
             }
         }
@@ -62,15 +70,16 @@ pipeline {
             steps {
                 echo "\033[34m[INFO]\033[0m 🚀 Starting Cypress E2E tests..."
                 warnError('⚠️ Some tests failed — build marked UNSTABLE') {
-                    sh "npx cypress run \
+                    sh """
+                        npx cypress run \
                             --browser electron \
                             --headless \
-                            --env allure=true,allureResultsPath=${ALLURE_RESULTS_DIR}"
+                            --env allure=true,allureResultsPath=${ALLURE_RESULTS_DIR}
+                    """
                 }
             }
             post {
                 always {
-                    echo "\033[34m[INFO]\033[0m 📁 Archiving screenshots & videos..."
                     archiveArtifacts artifacts: 'cypress/screenshots/**', allowEmptyArchive: true
                     archiveArtifacts artifacts: 'cypress/videos/**',      allowEmptyArchive: true
                 }
@@ -82,11 +91,15 @@ pipeline {
                 sh """
                     echo "\033[34m[INFO]\033[0m 📊 Generating Allure report..."
                     if [ -d "${ALLURE_RESULTS_DIR}" ] && [ "\$(ls -A ${ALLURE_RESULTS_DIR} 2>/dev/null)" ]; then
-                        npx allure-commandline generate ${ALLURE_RESULTS_DIR} \
+                        # Pakai binary dari node_modules — tidak ada koneksi ke Maven/internet
+                        ${ALLURE_BIN} generate ${ALLURE_RESULTS_DIR} \
                             -o ${ALLURE_REPORT_DIR} --clean
                         echo "\033[32m[SUCCESS]\033[0m ✅ Report: ${ALLURE_REPORT_DIR}/index.html"
                     else
-                        echo "\033[33m[WARN]\033[0m ⚠️ No Allure results — skipping report generation"
+                        echo "\033[33m[WARN]\033[0m ⚠️ No Allure results — skipping report"
+                        mkdir -p ${ALLURE_REPORT_DIR}
+                        echo '<html><body><h2>No test results found</h2></body></html>' \
+                            > ${ALLURE_REPORT_DIR}/index.html
                     fi
                 """
             }
@@ -94,15 +107,9 @@ pipeline {
 
         stage('Publish Report') {
             steps {
-                echo "\033[34m[INFO]\033[0m 📤 Publishing reports to Jenkins UI..."
+                echo "\033[34m[INFO]\033[0m 📤 Publishing report to Jenkins UI..."
 
-                allure([
-                    includeProperties: false,
-                    jdk:               '',
-                    reportBuildPolicy: 'ALWAYS',
-                    results:           [[path: "${ALLURE_RESULTS_DIR}"]]
-                ])
-
+                // publishHTML tidak butuh download apapun — langsung serve dari workspace
                 publishHTML(target: [
                     allowMissing:          true,
                     alwaysLinkToLastBuild: true,
@@ -112,7 +119,7 @@ pipeline {
                     reportName:            'Allure E2E Report'
                 ])
 
-                echo "\033[32m[SUCCESS]\033[0m ✅ Reports published"
+                echo "\033[32m[SUCCESS]\033[0m ✅ Report published"
             }
         }
     }
@@ -122,7 +129,7 @@ pipeline {
             echo "\033[32m[SUCCESS]\033[0m 🟢 BUILD SUCCESS"
             discordSend(
                 title:       "✅ SUCCESS — ${env.JOB_NAME} #${env.BUILD_NUMBER}",
-                description: "**Job:** ${env.JOB_NAME}\n**Build:** #${env.BUILD_NUMBER}\n**Commit:** `${env.GIT_COMMIT?.take(7) ?: 'N/A'}`\n**Duration:** ${currentBuild.durationString}\n📊 [Report](${env.BUILD_URL}allure/)  |  📋 [Log](${env.BUILD_URL}console)",
+                description: "**Job:** ${env.JOB_NAME}\n**Build:** #${env.BUILD_NUMBER}\n**Commit:** `${env.GIT_COMMIT?.take(7) ?: 'N/A'}`\n**Duration:** ${currentBuild.durationString}\n📊 [Report](${env.BUILD_URL}Allure_20E2E_20Report/)  |  📋 [Log](${env.BUILD_URL}console)",
                 footer:      "Jenkins CI",
                 link:        env.BUILD_URL,
                 result:      'SUCCESS',
@@ -135,7 +142,7 @@ pipeline {
             echo "\033[33m[UNSTABLE]\033[0m 🟡 BUILD UNSTABLE"
             discordSend(
                 title:       "⚠️ UNSTABLE — ${env.JOB_NAME} #${env.BUILD_NUMBER}",
-                description: "**Job:** ${env.JOB_NAME}\n**Build:** #${env.BUILD_NUMBER}\n**Commit:** `${env.GIT_COMMIT?.take(7) ?: 'N/A'}`\n**Duration:** ${currentBuild.durationString}\n📊 [Report](${env.BUILD_URL}allure/)  |  📋 [Log](${env.BUILD_URL}console)",
+                description: "**Job:** ${env.JOB_NAME}\n**Build:** #${env.BUILD_NUMBER}\n**Commit:** `${env.GIT_COMMIT?.take(7) ?: 'N/A'}`\n**Duration:** ${currentBuild.durationString}\n📊 [Report](${env.BUILD_URL}Allure_20E2E_20Report/)  |  📋 [Log](${env.BUILD_URL}console)",
                 footer:      "Jenkins CI",
                 link:        env.BUILD_URL,
                 result:      'UNSTABLE',
@@ -158,7 +165,6 @@ pipeline {
         }
 
         always {
-            echo "\033[34m[INFO]\033[0m 🧹 Cleaning workspace..."
             cleanWs(
                 cleanWhenSuccess:  true,
                 cleanWhenUnstable: true,
