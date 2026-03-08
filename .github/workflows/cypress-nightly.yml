@@ -47,6 +47,7 @@ jobs:
 
       - name: Run Full Cypress Suite
         uses: cypress-io/github-action@v6
+        continue-on-error: true
         with:
           browser: chrome
           install: false

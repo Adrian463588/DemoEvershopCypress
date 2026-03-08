@@ -18,7 +18,8 @@ pipeline {
         disableConcurrentBuilds(abortPrevious: true)
         timestamps()
         ansiColor('xterm')
-        quietPeriod(600)
+        // ✅ FIX: 5 menit (300 detik) sesuai requirement, bukan 600
+        quietPeriod(300)
     }
 
     triggers {
@@ -125,6 +126,13 @@ pipeline {
     }
 
     post {
+        // ✅ FIX: Archive allure-results & allure-report di `always` SEBELUM cleanWs
+        always {
+            // Archive raw allure results sebagai backup (bahkan saat failure)
+            archiveArtifacts artifacts: "${ALLURE_RESULTS_DIR}/**", allowEmptyArchive: true
+            archiveArtifacts artifacts: "${ALLURE_REPORT_DIR}/**", allowEmptyArchive: true
+        }
+
         success {
             echo "\033[32m[SUCCESS]\033[0m 🟢 BUILD SUCCESS"
             discordSend(
@@ -164,7 +172,9 @@ pipeline {
             )
         }
 
-        always {
+        // ✅ FIX: cleanWs HARUS di `cleanup {}` block — ini DIJAMIN jalan TERAKHIR
+        // setelah always/success/unstable/failure sudah selesai archive artifacts
+        cleanup {
             cleanWs(
                 cleanWhenSuccess:  true,
                 cleanWhenUnstable: true,
