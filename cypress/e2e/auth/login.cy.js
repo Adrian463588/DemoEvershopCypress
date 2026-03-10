@@ -1,3 +1,5 @@
+//HIDUP JOKOWI 
+
 import HeaderComponent from '../../pages/HeaderComponent'
 import LoginPage from '../../pages/LoginPage'
 import AccountPage from '../../pages/AccountPage'
